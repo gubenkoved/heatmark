@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Heatmark</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mgr">
+  <div class="app">
+    <header class="top">
+      <button id="sidebtn" class="ghost narrow-only" type="button" data-tip="Folders, views and shelves" aria-label="Folders, views and shelves">☰</button>
+      <div class="brand"><img src="icons/32.png" width="16" height="16" alt="">Heatmark</div>
+      <button id="kbtn" class="kbtn" type="button">
+        <span class="kbtn-ico"></span><span class="kbtn-t">Search bookmarks, folders, commands</span><kbd>Ctrl K</kbd>
+      </button>
+      <div class="top-r">
+        <button id="sync" class="ghost" type="button" data-tip="Pull visits from Chrome history now"></button>
+        <button id="detailbtn" class="ghost narrow-only" type="button" data-tip="Show details · I">Details</button>
+        <button id="helpbtn" class="ghost" type="button" data-tip="Keyboard shortcuts · ?">?</button>
+      </div>
+    </header>
+    <div class="side-host"><nav id="side" class="side" data-scroll></nav></div>
+    <main class="main">
+      <div class="mhead">
+        <div id="crumbs" class="crumbs"></div>
+        <div class="filter-wrap">
+          <input id="filter" class="filter" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="Filter, e.g. host:github">
+          <kbd class="filter-k">/</kbd>
+        </div>
+      </div>
+      <div id="colhead" class="colhead"></div>
+      <div class="pane-host"><div id="list" class="list" tabindex="0" data-scroll></div></div>
+      <div class="pane-host" hidden><div id="activity" class="activity" data-scroll></div></div>
+    </main>
+    <div class="detail-host"><aside id="detail" class="detail" data-scroll></aside></div>
+    <footer id="status" class="status"></footer>
+  </div>
+  <div id="help" class="help" hidden></div>
+  <script type="module" src="manager.js"></script>
+</body>
+</html>

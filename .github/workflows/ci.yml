@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Package (manifest validation and leak checks)
+        run: python3 dev/package.py
+
+      # Branded Chrome ignores --load-extension, so the e2e test needs Chrome for Testing.
+      - name: Install Chrome for Testing (stable)
+        run: |
+          url=$(curl -fsSL https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json \
+            | jq -r '.channels.Stable.downloads.chrome[] | select(.platform == "linux64") | .url')
+          echo "Downloading $url"
+          curl -fsSL -o "$RUNNER_TEMP/chrome.zip" "$url"
+          unzip -q "$RUNNER_TEMP/chrome.zip" -d "$RUNNER_TEMP"
+          echo "CHROME=$RUNNER_TEMP/chrome-linux64/chrome" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/chrome-linux64/chrome" --version
+
+      - name: End-to-end test
+        run: node dev/e2e.mjs "$CHROME"
