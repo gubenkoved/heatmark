@@ -5,7 +5,7 @@ import { confirmDialog, promptDialog } from '../lib/dialog.js';
 import { parseQuery } from '../lib/query.js';
 import {
   createShelf, deleteShelf, importExport, markRestored, setPins, renameShelf,
-  resetAll, restoreFromLogEntry, togglePins,
+  resetAll, restoreFromLogEntry, togglePins, shareShelf, copyShelfLocally,
 } from '../lib/store.js';
 import { buildExport, looksLikeExport, summarize as summarizeExport } from '../lib/transfer.js';
 import { h, lsClear, lsSet, openLink, plural, toast } from '../lib/ui.js';
@@ -100,23 +100,28 @@ export async function opDelete(ids) {
       action: 'Undo',
       run: () => withBusy(async () => {
         const idMap = new Map();
-        for (const t of trees) await restoreNode(t.node, t.parentId, t.index, idMap);
-        for (const p of pinsBefore) if (idMap.has(p.id)) await setPins([idMap.get(p.id)], p.shelf, true, m.shelfMode);
+        for (const { node, parentId, index } of trees) {
+          const [parent] = await chrome.bookmarks.get(parentId).catch(() => []);
+          const localOnly = node.syncing === false;
+          const sameParent = parent && !parent.url && (!localOnly || parent.syncing === false);
+          await restoreNode(node, sameParent ? parentId : await getOtherRootId(localOnly), sameParent ? index : undefined, idMap);
+        }
+        for (const p of pinsBefore) if (idMap.has(p.id)) await setPins([idMap.get(p.id)], p.shelf, true);
         await markRestored(idMap);
       }),
     });
   });
 }
 
-export function opPin(ids, shelfId) {
+export function opPin(ids, shelfId, onlyPin = false) {
   const links = ids.filter((id) => S.m.idx.entryById.has(id));
   if (!links.length) return;
   return withBusy(async () => {
-    const r = await togglePins(links, shelfId);
+    const r = await togglePins(links, shelfId, onlyPin);
     if (!r.changed.length) { toast(`Already pinned to ${r.shelf}`); return; }
     const pinned = r.kind === 'pinned';
     toast(`${pinned ? 'Pinned' : 'Unpinned'} ${plural(r.changed.length, 'bookmark')} ${pinned ? 'to' : 'from'} ${r.shelf}`,
-      { action: 'Undo', run: () => withBusy(() => setPins(r.changed, r.shelfId, !pinned, r.mode)) });
+      { action: 'Undo', run: () => withBusy(() => setPins(r.changed, r.shelfId, !pinned)) });
   });
 }
 
@@ -155,7 +160,7 @@ export function pickShelf(ids) {
       if (s.create) {
         try { id = await createShelf(s.create); } catch (err) { toast(String(err.message || err)); return; }
       }
-      await opPin(links, id);
+      await opPin(links, id, true);
     },
   });
 }
@@ -282,7 +287,7 @@ export function importJSON() {
     const s = summarizeExport(data);
     const ok = await confirmDialog({
       title: 'Import Heatmark data?',
-      message: `${plural(s.shelves, 'shelf', 'shelves')}, ${plural(s.log, 'log entry', 'log entries')} and visit counts for ${plural(s.pages, 'page')}.\n\nThis is merged with what is here: nothing is deleted, entries you already have are skipped, and shelf bookmarks are matched by URL.`,
+      message: `${plural(s.shelves, 'shelf', 'shelves')}, ${plural(s.log, 'log entry', 'log entries')} and visit counts for ${plural(s.pages, 'page')}.\n\nThis adds pins to Local shelves by name and URL. Heatmark skips log entries you already have.`,
       ok: 'Import',
     });
     if (!ok) return;
@@ -302,12 +307,29 @@ export async function renameShelfInline(id) {
   if (name && name !== s.name) withBusy(() => renameShelf(id, name));
 }
 
+export async function changeShelfStorage(id) {
+  const shelf = S.m.shelves.find((s) => s.id === id);
+  if (!shelf) return;
+  const share = shelf.scope === 'local';
+  const ok = await confirmDialog({
+    title: share ? `Share “${shelf.name}”?` : `Make a local copy of “${shelf.name}”?`,
+    message: share
+      ? 'Chrome Sync will share this shelf and its pin references with your other computers. A pin appears when its Chrome bookmark is available there.'
+      : 'Copy the pins available on this computer. The shared shelf stays available to other computers.',
+    ok: share ? 'Share shelf' : 'Make local copy',
+  });
+  if (!ok) return;
+  await withBusy(async () => go(`shelf:${await (share ? shareShelf(id) : copyShelfLocally(id))}`));
+}
+
 export async function removeShelf(id) {
   const s = S.m.shelves.find((x) => x.id === id);
   if (!s) return;
-  if (s.items.length && !(await confirmDialog({
+  if ((s.items.length || s.scope === 'shared') && !(await confirmDialog({
     title: `Delete shelf “${s.name}”?`,
-    message: `The ${plural(s.items.length, 'bookmark')} on it stay where they are; only the shelf goes.`,
+    message: s.scope === 'shared'
+      ? 'Chrome Sync will remove this shelf from your other computers. Its Chrome bookmarks stay in place.'
+      : 'The bookmarks on this shelf stay in their Chrome folders.',
     ok: 'Delete shelf', danger: true,
   }))) return;
   withBusy(async () => {
@@ -316,11 +338,11 @@ export async function removeShelf(id) {
   });
 }
 
-// Clear the data on this device and return to Local shelves.
+// Clear the data on this Chrome profile.
 export async function deleteAllStoredData() {
   const ok = await confirmDialog({
     title: 'Delete local Heatmark data?',
-    message: 'This clears the change log, visit record, local shelves, view settings, and shared edits waiting to be saved from this device. Heatmark returns to Local mode. Your Chrome bookmarks and shelves already saved to Chrome Sync stay available.',
+    message: 'This clears the change log, visit record, local shelves, view settings, and shared edits waiting to be saved from this profile. Your Chrome bookmarks and shelves already saved to Chrome Sync stay available.',
     ok: 'Delete local data', danger: true,
   });
   if (!ok) return;

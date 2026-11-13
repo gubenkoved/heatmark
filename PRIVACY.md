@@ -23,24 +23,23 @@ Heatmark keeps these on your device in its own storage:
 - per-day visit counts and the last visit time for bookmarked pages;
 - a log of changes to your bookmarks (adds, removals, moves, renames, URL edits, archives and
   pins), including the contents of deleted items so they can be restored;
-- your local shelves and default shelf, your choice of shelf storage, and the location of the Archive folder;
+- your Local shelves, default pin shelf, Quick Access preferences, and the location of the Archive folder;
 - interface preferences: which folders are expanded, which sections are collapsed, which log
   filters are on.
 
-If you enable **Shared** on a device, Heatmark uses Chrome Sync (`chrome.storage.sync`) for
-shared shelf names, order, default shelf, and pin references. Each pin reference includes
+When you choose **Share** on a shelf, Heatmark uses Chrome Sync (`chrome.storage.sync`) for
+that shelf’s name, order, and pin references. Each pin reference includes
 hashes of the bookmarked URL and title and its creation time. Chrome stores this data in your
 Google account according to Chrome’s sync settings. Heatmark keeps shared edits on the device
 if Chrome rejects a write. Visit counts, the change log, and restore data are stored locally.
 
-**Export JSON** saves a file on your computer with your bookmarks, available pins from the active
-shelf collection, the change log, and visit counts. Keep it private.
+**Export JSON** saves a file on your computer with your bookmarks, available pins from your Local and Shared
+shelves, the change log, and visit counts. Keep it private.
 
 ## How long it is kept
 
 Visit counts follow your Chrome history. Heatmark holds its local change log and shelves until
-you delete them or remove the extension. You can delete shared shelves from a device using
-Shared mode.
+you delete them or remove the extension. Deleting a Shared shelf in Heatmark also removes it from Chrome Sync.
 
 ## Sharing and selling
 
@@ -58,9 +57,8 @@ including the Limited Use requirements.
   stored visit counts. Removing pages or recent time ranges removes those visits from the counts
   (for the roughly 90 days Chrome itself keeps history).
 - Counts for pages that are no longer bookmarked are dropped at the next sync.
-- **Delete local data** erases Heatmark’s data and unsent shared edits from the current profile,
-  then returns it to Local mode. Visit counts and the log are rebuilt. Shelves already saved to
-  Chrome Sync remain available to devices in Shared mode.
+- **Delete local data** erases Heatmark’s data and unsent shared edits from the current profile.
+  Visit counts and the log are rebuilt. Shelves already saved to Chrome Sync remain available.
 - Removing Heatmark from Chrome clears its local storage in that profile.
 
 None of these touch your bookmarks themselves.

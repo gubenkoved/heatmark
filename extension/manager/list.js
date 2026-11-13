@@ -146,6 +146,7 @@ export function renderSide() {
     m.shelves.forEach((s, i) => {
       const k = `shelf:${s.id}`;
       html += `<a class="sb-i${on(k)}" href="#${k}" data-drop="${k}" data-shelf="${s.id}"><span class="ico-shelf"></span><span class="sb-t">${esc(s.name)}</span>`
+        + `${s.scope === 'shared' ? '<span class="sb-shared" title="Shared through Chrome Sync">shared</span>' : ''}`
         + `${s.id === m.defaultShelf ? '<span class="sb-def" title="Default shelf: P pins here">P</span>' : ''}`
         + `${i < 9 ? `<span class="sb-key">${i + 1}</span>` : ''}<span class="sb-n">${s.items.length || ''}</span></a>`;
     });
@@ -207,11 +208,14 @@ export function renderHead() {
     const s = m.shelves.find((x) => x.id === r.id);
     crumbs = s ? `<span class="cr-t">${esc(s.name)}</span>` : 'Shelf not found';
     if (s) {
+      const i = m.shelves.indexOf(s);
       actions = `<span class="cr-acts">`
+        + `<span class="cr-tag">${s.scope === 'shared' ? 'Shared' : 'Local'}</span>`
+        + `<button class="ghost sm" data-act="shelf-storage" type="button">${s.scope === 'shared' ? 'Make local copy…' : 'Share…'}</button>`
         + (s.id === m.defaultShelf ? '<span class="cr-tag">default for P</span>' : `<button class="ghost sm" data-act="shelf-default" type="button">Make default</button>`)
         + `<button class="ghost sm" data-act="shelf-rename" type="button">Rename</button>`
-        + `<button class="ghost sm" data-act="shelf-up" type="button" title="Move shelf up">↑</button>`
-        + `<button class="ghost sm" data-act="shelf-down" type="button" title="Move shelf down">↓</button>`
+        + `<button class="ghost sm" data-act="shelf-up" type="button" title="Move shelf up"${m.shelves[i - 1]?.scope !== s.scope ? ' disabled' : ''}>↑</button>`
+        + `<button class="ghost sm" data-act="shelf-down" type="button" title="Move shelf down"${m.shelves[i + 1]?.scope !== s.scope ? ' disabled' : ''}>↓</button>`
         + `<button class="ghost sm danger" data-act="shelf-delete" type="button">Delete</button></span>`
         + `<span class="cr-hint">drag rows or Alt ↑↓ to reorder</span>`;
     }
@@ -369,7 +373,7 @@ export function renderStatus() {
     }
     if (S.selected.size) left += `<span class="st-sel">${S.selected.size} selected</span>`;
   }
-  if (S.m.shelfMode === 'shared' && S.m.sharedPending) left += '<span>Shared shelf changes pending</span>';
+  if (S.m.sharedPending) left += '<span>Shared shelf changes pending</span>';
   E.status.innerHTML = `<div class="st-l">${left}</div><div class="st-r">`
     + k('↑↓', 'move') + k('Enter', 'open') + k('X', 'select') + k('P', 'pin') + k('M', 'move') + k('A', 'archive')
     + k('Del', 'delete') + k('Shift F10', 'actions') + k('/', 'filter') + k('Ctrl K', 'search') + k('?', 'all keys') + `</div>`;

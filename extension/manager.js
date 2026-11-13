@@ -42,7 +42,7 @@ export const pal = createPalette({
         { name: 'Collapse all folders', run: collapseAll },
         { name: 'Export JSON', hint: 'log, activity, shelves, bookmarks', run: exportJSON },
         { name: 'Import JSON…', hint: 'merge an export from another install', run: importJSON },
-        { name: 'Settings', hint: 'shelf storage', run: openSettings },
+        { name: 'Settings', hint: 'Quick Access and default pin shelf', run: openSettings },
         { name: 'Delete local data…', hint: 'log, visit record, local shelves', run: deleteAllStoredData },
         { name: 'Keyboard shortcuts', hint: '?', run: () => toggleHelp(true) },
       ];
@@ -65,7 +65,7 @@ const refresh = (fn) => () => { if (document.hidden) staleWhileHidden = true; el
 for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved', 'onChildrenReordered']) chrome.bookmarks[ev]?.addListener(refresh(reload));
 chrome.storage.onChanged.addListener((changes, area) => {
   const keys = Object.keys(changes);
-  if (area === 'sync' && (S.m?.shelfMode !== 'shared' || !keys.some((key) => key.startsWith(SHARED_PREFIX)))) return;
+  if (area === 'sync' && !keys.some((key) => key.startsWith(SHARED_PREFIX))) return;
   refresh(keys.every((k) => k === 'act' || k === 'actSyncedAt') ? reloadActivity : reload)();
 });
 document.addEventListener('visibilitychange', () => {

@@ -40,16 +40,19 @@
   </div>
   <dialog id="settings" class="dlg" aria-labelledby="settings-title">
     <h2 id="settings-title" class="dlg-t">Settings</h2>
-    <fieldset class="shelf-settings">
-      <legend>Shelf storage</legend>
-      <label><input type="radio" name="shelfMode" value="local"> Local (default)</label>
-      <p class="dlg-m">Use shelves saved in this Chrome profile.</p>
-      <label><input type="radio" name="shelfMode" value="shared"> Shared</label>
-      <p class="dlg-m">Chrome Sync shares your shelves, pins, sort order, and default shelf across computers. Use the same Chrome account and Heatmark installation, enable Bookmarks and Extensions in Chrome, and choose Shared on each computer. Visit counts and the change log stay on this device.</p>
-    </fieldset>
+    <div class="shelf-settings">
+      <label for="default-shelf">Default pin shelf on this computer</label>
+      <select id="default-shelf"></select>
+      <fieldset>
+        <legend>Quick Access on this computer</legend>
+        <p class="dlg-m">Choose which shelves appear before Recent in the popup and Ctrl+K. Search and Recent can still show their bookmarks.</p>
+        <label><input type="checkbox" id="all-quick-shelves">Show all shelves</label>
+        <div id="quick-shelves"></div>
+      </fieldset>
+      <p class="dlg-m">Local shelves stay in this Chrome profile. Use Share on a shelf to sync it through Chrome with the same account and Heatmark installation. Enable Bookmarks and Extensions in Chrome for shared pins to appear on your other computers.</p>
+    </div>
     <p id="shelf-sync-info" class="dlg-m" role="status" hidden></p>
     <div class="dlg-acts">
-      <button id="copy-shelves" class="btn" type="button" hidden>Copy local shelves to Shared</button>
       <button id="retry-shelves" class="btn" type="button" hidden>Retry</button>
       <button id="close-settings" class="btn primary" type="button">Done</button>
     </div>

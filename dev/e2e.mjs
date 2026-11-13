@@ -231,36 +231,97 @@ try {
     const { loadModel } = await import('./lib/model.js');
     const { readSharedShelves, SHARED_PREFIX } = await import('./lib/shared-shelves.js');
     const model = () => loadModel();
-    const snapshot = async () => (await model()).shelves.map(({ name, items }) => [name, items]);
     const sync = chrome.storage.sync;
-    const localBefore = await snapshot();
-    const noSyncInLocal = !Object.keys(await sync.get(null)).length;
-
-    document.getElementById('settingsbtn').click();
-    const selected = () => document.querySelector('#settings input:checked')?.value;
-    const select = async (mode) => {
-      document.querySelector('#settings input[value=' + mode + ']').click();
-      for (let i = 0; i < 25 && (selected() !== mode || document.querySelector('#settings input:checked')?.disabled); i++) await sleep(80);
-    };
-    const defaultLocal = selected() === 'local';
-    await select('shared');
-    const startsEmpty = !(await model()).shelves.some((s) => s.items.length) && !Object.keys(await sync.get(null)).length;
-    document.getElementById('copy-shelves').click();
-    for (let i = 0; i < 25 && !document.getElementById('shelf-sync-info').textContent.includes('Added'); i++) await sleep(80);
-    const copied = JSON.stringify(await snapshot()) === JSON.stringify(localBefore);
-    const repeated = await store.copyShelvesToShared();
-    await select('local');
-    const returnedToLocal = JSON.stringify(await snapshot()) === JSON.stringify(localBefore);
-    await select('shared');
-    document.getElementById('close-settings').click();
-
     const find = async (n) => (await chrome.bookmarks.search({ title: n }))[0];
     const a = await find('O1'), b = await find('O4'), c = await find('O5');
-    const shelf = await store.createShelf('Shared work');
+    const localOnly = (await model()).shelves.every((shelf) => shelf.scope === 'local')
+      && !Object.keys(await sync.get(null)).length;
+    const localDefault = (await model()).defaultShelf;
+    await store.setQuickAccess([localDefault]);
+    const work = await store.createShelf('Work');
+    const createdShown = (await model()).quickShelves.join() === [localDefault, work].join();
+    await store.togglePins([c.id], work);
+    const localStillPrivate = !Object.keys(await sync.get(null)).length;
+    const start = await store.createShelf('Personal');
+    await store.togglePins([a.id], start);
+    const shelf = await store.shareShelf(start);
+    const rawId = shelf.slice('shared~'.length);
+    const converted = (await model()).shelves.some((s) => s.id === shelf && s.scope === 'shared')
+      && !(await model()).shelves.some((s) => s.id === start);
+    const copy = await store.copyShelfLocally(shelf);
+    const localCopy = (await model()).shelves.some((s) => s.id === copy && s.scope === 'local' && s.items.includes(a.id));
+    const syncBeforePrefs = JSON.stringify(await sync.get(null));
+    await store.setDefaultShelf(work);
+    await store.setQuickAccess([shelf, work]);
+    const localPrefs = JSON.stringify(await sync.get(null)) === syncBeforePrefs
+      && (await model()).defaultShelf === work && (await model()).quickShelves.join() === [shelf, work].join();
+    const profile = await chrome.storage.local.get('shelfPreferences');
+    const legacyId = 'pinned';
+    await sync.set({ [SHARED_PREFIX + 's:pinned']: { name: 'Pinned', at: Date.now() }, [SHARED_PREFIX + 'default']: legacyId });
+    await chrome.storage.local.remove('shelfPreferences');
+    await chrome.storage.local.set({ shelfMode: 'shared' });
+    const legacy = await model();
+    const migrated = legacy.shelves.filter((s) => s.name === 'Pinned').length === 2
+      && legacy.defaultShelf === 'shared~pinned' && legacy.quickShelves.every((id) => id.startsWith('shared~'));
+    await chrome.storage.local.set({ ...profile, shelfMode: 'local',
+      sharedPending: { [SHARED_PREFIX + 's:pinned']: { name: 'Paused edit', at: Date.now() } } });
+    await store.flushSharedShelves();
+    const paused = (await sync.get(SHARED_PREFIX + 's:pinned'))[SHARED_PREFIX + 's:pinned'].name === 'Pinned';
+    await store.retrySharedShelves();
+    const unpaused = (await sync.get(SHARED_PREFIX + 's:pinned'))[SHARED_PREFIX + 's:pinned'].name === 'Paused edit';
+    const migratedPausedWrite = paused && unpaused && !(await model()).sharedPending;
+    await sync.remove(SHARED_PREFIX + 's:pinned');
+    await sync.set({ [SHARED_PREFIX + 'default']: rawId });
+    const remoteDefaultIgnored = (await model()).defaultShelf === work;
+    const oldPrefs = await chrome.storage.local.get('shelfPreferences');
     await store.setDefaultShelf(shelf);
-    await store.togglePins([a.id], shelf);
+    const shelfKey = SHARED_PREFIX + 's:' + rawId;
+    const savedShelf = await sync.get(shelfKey);
+    await sync.remove(shelfKey);
+    const fallback = await model();
+    const missingFallsBackLocal = fallback.shelves.find((s) => s.id === fallback.defaultShelf)?.scope === 'local';
+    await sync.set(savedShelf);
+    await chrome.storage.local.set(oldPrefs);
+
+    await sleep(350);
+    document.getElementById('settingsbtn').click();
+    const settingsUsesProfile = document.getElementById('default-shelf').value === work
+      && document.querySelectorAll('#quick-shelves input:checked').length === 2;
+    const workChoice = document.querySelector('#quick-shelves input[data-quick-focus="' + work + '"]');
+    workChoice?.click();
+    for (let i = 0; i < 25 && (await model()).quickShelves.includes(work); i++) await sleep(80);
+    document.getElementById('close-settings').click();
+    key('k', { ctrlKey: true });
+    const groups = [...document.querySelectorAll('.pal-overlay .pal-sec')].map((node) => node.firstChild.textContent);
+    const quickFilters = Boolean(workChoice) && groups.includes('Personal') && !groups.includes('Work')
+      && (await model()).shelves.some((s) => s.id === work);
+    document.querySelector('.pal-in').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    const localPage = { url: 'https://example.com/work-local-page', title: 'Work local page' };
+    await store.pinPage(localPage);
+    const page = (await chrome.bookmarks.search({ url: localPage.url }))[0];
+    const localNewPage = page.syncing === false && (await model()).shelves.find((s) => s.id === work).items.includes(page.id);
+    await store.pinPage(localPage, copy);
+    await store.pinPage({ ...localPage, url: 'https://www.example.com/work-local-page/' }, copy); // the same page to normUrl
+    const explicitPinOnly = (await model()).shelves.find((s) => s.id === copy).items.includes(page.id) && (await model()).defaultShelf === work
+      && (await model()).idx.urls.filter((e) => e.node.url.includes('work-local-page')).length === 1;
+    // A signed-in profile can have account and device-only folders; one with Chrome Sync on
+    // has only synced folders, and Local shelves bookmark into its Other bookmarks.
+    const { getOtherRootId } = await import('./lib/bm.js');
+    const roots = (device) => async () => [{ id: '0', children: [
+      { id: 'bar', folderType: 'bookmarks-bar', syncing: true },
+      { id: 'account', folderType: 'other', syncing: true },
+      ...(device ? [{ id: 'device', folderType: 'other', syncing: false }] : []),
+    ] }];
+    await sleep(400); // let the page finish reloading before its tree is replaced
+    const getTree = chrome.bookmarks.getTree;
+    chrome.bookmarks.getTree = roots(true);
+    const twoTrees = await getOtherRootId(true) === 'device' && await getOtherRootId() === 'account';
+    chrome.bookmarks.getTree = roots(false);
+    const syncedProfile = twoTrees && await getOtherRootId(true) === 'account';
+    chrome.bookmarks.getTree = getTree;
     let data = await sync.get(null);
-    const prefix = SHARED_PREFIX + 'p:' + shelf + ':';
+    const prefix = SHARED_PREFIX + 'p:' + rawId + ':';
     const aKey = Object.keys(data).find((key) => key.startsWith(prefix));
     const portable = typeof data[aKey].url === 'string' && data[aKey].url !== a.url && !('id' in data[aKey]);
     const elsewhere = { ...a, id: '123456' };
@@ -268,15 +329,16 @@ try {
     const arrivedBookmark = await readSharedShelves([elsewhere, { ...elsewhere, id: '123457', title: 'Duplicate' }]);
     const ambiguousBookmark = await readSharedShelves([elsewhere, { ...elsewhere, id: '123457' }]);
     const matchedOtherProfile = pendingBookmark.unavailable > 0
-      && arrivedBookmark.shelves.find((s) => s.id === shelf).items[0] === elsewhere.id
-      && ambiguousBookmark.shelves.find((s) => s.id === shelf).items.length === 0;
+      && arrivedBookmark.shelves.find((s) => s.id === rawId).items[0] === elsewhere.id
+      && ambiguousBookmark.shelves.find((s) => s.id === rawId).items.length === 0;
 
     // Use real Chrome Sync storage events to stand in for the other computer's updates.
     // Move one key from a temporary shelf to emulate an independently added pin.
-    const temporary = await store.createShelf('Temporary');
-    await store.togglePins([b.id, c.id], temporary);
+    const tempLocal = await store.createShelf('Temporary');
+    await store.togglePins([b.id, c.id], tempLocal);
+    const temporary = await store.shareShelf(tempLocal);
     data = await sync.get(null);
-    const remotePins = Object.entries(data).filter(([key]) => key.startsWith(SHARED_PREFIX + 'p:' + temporary + ':'));
+    const remotePins = Object.entries(data).filter(([key]) => key.startsWith(SHARED_PREFIX + 'p:' + temporary.slice('shared~'.length) + ':'));
     const incoming = Object.fromEntries(remotePins.map(([key, value]) => [prefix + key.split(':').at(-1), value]));
     await store.deleteShelf(temporary);
     location.hash = '#shelf:' + shelf;
@@ -291,18 +353,16 @@ try {
     await sleep(400);
     const remoteUnpin = !rowOf('O1') && !!rowOf('O4');
     await store.renameShelf(shelf, 'Shared projects');
-    await store.moveShelf(shelf, -1);
-    await store.moveShelf(shelf, -1);
-    const settingsSynced = (await model()).shelves[0].name === 'Shared projects' && (await model()).defaultShelf === shelf;
+    const settingsSynced = (await sync.get(shelfKey))[shelfKey].name === 'Shared projects'
+      && (await model()).defaultShelf === work;
 
     const longName = 'a'.repeat(9000);
-    const large = await store.createShelf(longName);
+    const large = await store.shareShelf(await store.createShelf(longName));
     const beforeRetry = await model();
     const pendingOnQuota = beforeRetry.sharedPending && beforeRetry.sharedError.includes('limit')
       && beforeRetry.shelves.some((s) => s.id === large);
-    await store.changeShelfMode('local');
-    const localWhilePending = JSON.stringify(await snapshot()) === JSON.stringify(localBefore);
-    await store.changeShelfMode('shared');
+    const whilePending = await store.createShelf('Available while sync is full');
+    const localWhilePending = (await model()).shelves.some((s) => s.id === whilePending && s.scope === 'local');
     await store.renameShelf(large, 'Short enough');
     const retried = !(await model()).sharedPending && (await model()).shelves.some((s) => s.name === 'Short enough');
 
@@ -312,23 +372,28 @@ try {
     await sleep(450);
     const removed = Object.entries(await chrome.storage.local.get(null))
       .find(([key, value]) => key.startsWith('log:') && value.kind === 'removed' && value.id === b.id);
-    const deleted = removed?.[1].wasPinned?.some((pin) => pin.shelf === shelf && pin.mode === 'shared');
+    const deleted = removed?.[1].wasPinned?.some((pin) => pin.shelf === shelf);
     await store.restoreFromLogEntry(removed[0]);
     const restored = await find('O4');
     const restoredPin = (await model()).isPinned(restored.id);
 
     await store.resetAll();
-    const resetStayedLocal = (await model()).shelfMode === 'local' && Object.keys(await sync.get(null)).some((key) => key.startsWith(prefix));
-    return { defaultLocal, noSyncInLocal, startsEmpty, copied, repeated: repeated.pins === 0 && repeated.shelves === 0, returnedToLocal,
-      portable, matchedOtherProfile, received, staleReorderKeptNewPin, remoteUnpin, settingsSynced, pendingOnQuota, localWhilePending, retried, urlEdit, deleted, restoredPin, resetStayedLocal };
+    const reset = await model();
+    const resetStayedLocal = reset.defaultShelf === 'pinned' && reset.quickAccess == null
+      && reset.shelves.some((s) => s.id === shelf) && !reset.shelves.some((s) => s.id === work);
+    return { localOnly, localStillPrivate, converted, localCopy, localPrefs, createdShown, migrated, migratedPausedWrite, remoteDefaultIgnored, missingFallsBackLocal,
+      settingsUsesProfile, quickFilters, localNewPage, explicitPinOnly, syncedProfile, portable, matchedOtherProfile, received, staleReorderKeptNewPin, remoteUnpin,
+      settingsSynced, pendingOnQuota, localWhilePending, retried, urlEdit, deleted, restoredPin, resetStayedLocal };
   `);
-  check('Settings defaults to Local and Shared starts empty until a user copies', shared.defaultLocal && shared.noSyncInLocal && shared.startsEmpty, JSON.stringify(shared));
-  check('copying is additive and idempotent, and Local retains its shelves', shared.copied && shared.repeated && shared.returnedToLocal);
+  check('Local shelves coexist with Shared and publish only on explicit sharing', shared.localOnly && shared.localStillPrivate && shared.converted && shared.localCopy, JSON.stringify(shared));
+  check('Quick Access and the pin target are independent per-profile preferences', shared.localPrefs && shared.createdShown && shared.remoteDefaultIgnored && shared.missingFallsBackLocal && shared.settingsUsesProfile && shared.quickFilters, JSON.stringify(shared));
+  check('v1.1 shelves with overlapping IDs and the active default survive migration', shared.migrated && shared.migratedPausedWrite);
+  check('bookmarking on a Local shelf prefers a device-only folder and explicit pins keep the default', shared.localNewPage && shared.explicitPinOnly && shared.syncedProfile, JSON.stringify(shared));
   check('shared records use portable references and update the open manager', shared.portable && shared.matchedOtherProfile && shared.received && shared.remoteUnpin, JSON.stringify(shared));
-  check('reordering a stale view preserves incoming pins, with independent shelf settings', shared.staleReorderKeptNewPin && shared.settingsSynced, JSON.stringify([shared.staleReorderKeptNewPin, shared.settingsSynced]));
-  check('quota rejection retains shared edits across mode switches and retries', shared.pendingOnQuota && shared.localWhilePending && shared.retried);
-  check('shared pins follow URL edits and survive delete with restore', shared.urlEdit && shared.deleted && shared.restoredPin, JSON.stringify([shared.urlEdit, shared.deleted, shared.restoredPin]));
-  check('local reset returns to Local and preserves shared shelves', shared.resetStayedLocal);
+  check('reordering a stale view preserves incoming pins', shared.staleReorderKeptNewPin && shared.settingsSynced);
+  check('quota rejection preserves shared edits while Local shelves remain writable', shared.pendingOnQuota && shared.localWhilePending && shared.retried);
+  check('shared pins follow URL edits and survive delete with restore', shared.urlEdit && shared.deleted && shared.restoredPin);
+  check('local reset clears profile preferences and preserves shared shelves', shared.resetStayedLocal);
 
   await openPage(cdp, `chrome-extension://${EXT_ID}/popup.html`);
   await sleep(800);

@@ -19,7 +19,8 @@ keep working as before.
   and folders, ranked by how often and how recently you use each link. With an empty query it
   shows your shelves, then your recent links. The toolbar popup (`Alt+K`) is the same palette.
 - **Keep what matters close.** Shelves are lists of pinned bookmarks: press `P` to pin, drag to
-  reorder, `1`–`9` to jump between them. Switch on Shared in Settings to use the same shelves on multiple computers.
+  reorder, `1`–`9` to jump between them. Share individual shelves across computers and choose
+  which shelves show in Quick Access on each computer.
 - **Slice and filter** the list with a small query language, for example
   `in:work host:github visited:>6mo -is:pinned`.
 - **Clean up safely.** Archive, move and delete in bulk, with **Undo** for each. Duplicates and
@@ -50,14 +51,13 @@ history; that takes a few seconds.
 
 ### Moving to another install
 
-For automatic shelf sync, install the same Heatmark build on both computers and choose
-**Settings → Shelf storage → Shared** on each. To move local data, or transfer shelves between
-different extension IDs such as an unpacked copy and the Chrome Web Store installation, use a file:
+Shared shelves appear on computers using the same Chrome account and Heatmark extension ID.
+To move local data or transfer shelves between an unpacked copy and the Chrome Web Store
+installation, use a file:
 
 1. In the old install, open **Activity & log → Export JSON**.
 2. Open the new install, then **Activity & log → Import JSON** (or `Ctrl+K` → "Import") and pick
-   the file. Heatmark skips existing entries and merges pinned bookmarks into the active shelf
-   collection by URL.
+   the file. Heatmark skips existing entries and merges pinned bookmarks into Local shelves by URL.
 3. Remove the old install at `chrome://extensions`.
 
 ## Your data
@@ -82,18 +82,26 @@ per day; while Chrome is running it adds new visits as they happen.
 | Your shelves | Which bookmarks you pinned, on which shelf, in what order. |
 | A few view settings | Which folders are expanded, which sections are collapsed, which log filters are on. |
 
-**Where it lives.** Heatmark keeps this data in your Chrome profile by default. With Shared
-selected, Chrome Sync carries the shared shelf names, pin references, order, and default shelf
-through your Google account. The pin references use hashes of the bookmark URL and title plus
-its creation time. Heatmark has no server and makes no direct network requests.
+**Local and Shared shelves.** New shelves are Local. Open a shelf and choose **Share…** to
+publish that shelf through Chrome Sync. Sign in to the same Chrome account on each computer,
+install the same Heatmark extension, and enable **Bookmarks** and **Extensions** in Chrome.
+Shared pins appear when their matching Chrome bookmark is available. **Make local copy…**
+copies the pins available on this device and keeps the original Shared shelf available.
 
-**Set up Shared shelves.** Sign in to the same Chrome account on each computer and enable
-**Bookmarks** and **Extensions** in Chrome. Open **Settings** in Heatmark and choose **Shared**
-on each computer that should use that collection. To bring over existing local shelves, click
-**Copy local shelves to Shared**. Shelves with the same name are merged. Choose **Local** at any
-time to return to that profile’s own shelves. Shared pins appear when their matching Chrome
-bookmarks are available. If Chrome rejects a sync write, Heatmark keeps the edit on the device
-and offers **Retry** in Settings.
+**Quick Access and default pins.** In **Settings**, choose which shelves appear before Recent
+in the popup and `Ctrl+K`, and which shelf receives `P`, `Alt+P`, or **Pin this page**.
+Both settings belong to this Chrome profile. **Pin to shelf…** chooses a destination for a
+single action. Every available shelf stays accessible in the manager and shelf picker.
+
+**Where it lives.** Chrome Sync carries shared shelf names, order, and pin references through
+your Google account. Pin references use hashes of a bookmark’s URL and title plus its creation
+time. Heatmark keeps Local shelves, your default pin shelf, Quick Access, visit counts and
+the log in your Chrome profile. Heatmark has no server. If Chrome rejects a shared write,
+Heatmark keeps the edit on the device and offers **Retry** in Settings.
+
+A Local shelf keeps its list of pins on this computer. The bookmarks themselves follow your
+Chrome sync settings. When Heatmark bookmarks a new page for a Local shelf, it uses Chrome’s
+device-only bookmark folder if this profile has one, and **Other bookmarks** otherwise.
 
 **How it stays up to date:**
 
@@ -107,12 +115,12 @@ and offers **Retry** in Settings.
 
 **You're in control:**
 
-- **Export JSON** saves your bookmarks, the active shelves and their available pins, the change
+- **Export JSON** saves your bookmarks, Local and Shared shelves and their available pins, the change
   log, and visit counts to a file. Keep the file private.
-- **Import JSON** merges shelves into the active collection and merges visit counts and the log locally.
+- **Import JSON** merges shelves, visit counts, and the log locally.
 - **Delete local data** (`Ctrl+K` → "Delete local data") erases Heatmark’s data and unsent shared
-  edits from this profile, then switches to Local. Your Chrome bookmarks and shelves already
-  saved to Chrome Sync remain available. Visit counts and the log are rebuilt.
+  edits from this profile. Your Chrome bookmarks and shelves already saved to Chrome Sync
+  remain available. Visit counts and the log are rebuilt.
 - **Removing the extension** clears Heatmark’s local storage in that profile.
 
 The formal statement is in [PRIVACY.md](PRIVACY.md).
@@ -233,7 +241,7 @@ dev/
 store/                  the Chrome Web Store page: listing text, privacy declarations, images
 ```
 
-Data in `chrome.storage.local`: `shelves`, `defaultShelf`, `act` (`{normUrl: {u, d: {day: visits},
+Data in `chrome.storage.local`: `shelves`, `shelfPreferences`, `act` (`{normUrl: {u, d: {day: visits},
 last}}`), `actSyncedAt`, `trackingSince`, `archiveFolderId`, and one `log:<time>:<random>` key per
 log entry. View settings live in the pages' `localStorage` under `bk:`.
 

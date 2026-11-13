@@ -12,11 +12,15 @@ function isOtherRoot(n) {
   return n.folderType ? n.folderType === 'other' : n.id === '2';
 }
 
-// "Other bookmarks" — preferring the synced (account) copy when Chrome has both.
-export async function getOtherRootId() {
+// "Other bookmarks" — preferring the synced (account) copy when Chrome has both. With
+// `localOnly`, a device-only folder when this profile has one: a profile with Chrome Sync
+// on keeps a single, synced set of folders.
+export async function getOtherRootId(localOnly = false) {
   const root = await getRoot();
   const others = root.children.filter(isOtherRoot);
-  const pick = others.find((n) => n.syncing) || others[0] || root.children[root.children.length - 1];
+  const local = localOnly && (others.find((node) => node.syncing === false)
+    || root.children.find((node) => node.folderType === 'bookmarks-bar' && node.syncing === false));
+  const pick = local || others.find((n) => n.syncing) || others[0] || root.children[root.children.length - 1];
   return pick.id;
 }
 
@@ -112,7 +116,7 @@ export function displayUrl(u) {
 
 // Keep only what's needed to recreate a removed subtree.
 export function slim(n) {
-  const out = { id: n.id, title: n.title, dateAdded: n.dateAdded };
+  const out = { id: n.id, title: n.title, dateAdded: n.dateAdded, syncing: n.syncing };
   if (n.url) out.url = n.url;
   if (n.children) out.children = n.children.map(slim);
   return out;

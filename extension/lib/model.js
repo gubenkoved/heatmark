@@ -83,8 +83,8 @@ export async function loadModel({ withLog = false } = {}) {
   }, '9999');
 
   return {
-    now, keys, idx, act, dupKey, shelves, defaultShelf, pinnedIn, shelfMode: shelfData.mode,
-    sharedPending: Object.keys(st.sharedPending || {}).length > 0,
+    now, keys, idx, act, dupKey, shelves, defaultShelf, pinnedIn, quickAccess: shelfData.quickAccess, quickShelves: shelfData.quickShelves,
+    sharedPending: Object.keys(st.sharedPending || {}).length > 0, sharedPaused: st.shelfMode === 'local',
     sharedError: st.sharedError, unavailablePins: shelfData.unavailable || 0,
     defaultShelfName: shelves.find((s) => s.id === defaultShelf)?.name || 'Pinned',
     meta: {

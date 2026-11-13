@@ -5,7 +5,7 @@
 
 import { getRoot, getOtherRootId, pathOf, slim, countUrls, restoreNode } from './lib/bm.js';
 import {
-  appendLog, copyLocalShelves, flushSharedShelves, logEntries, logFrom, setShelfMode, shelfOps,
+  appendLog, flushSharedShelves, logEntries, logFrom, migrateShelfPreferences, shelfOps,
 } from './lib/store.js';
 import { syncFromHistory, syncUrls, recordVisits, bookmarkedNorms } from './lib/activity.js';
 import { importData } from './lib/transfer.js';
@@ -56,7 +56,7 @@ async function startup() {
 
 function start() {
   work(startup);
-  shelfWork(flushSharedShelves);
+  shelfWork(async () => { await migrateShelfPreferences(); await flushSharedShelves(); });
 }
 chrome.runtime.onInstalled.addListener(start);
 chrome.runtime.onStartup.addListener(start);
@@ -68,9 +68,7 @@ const handlers = {
     if (!Object.hasOwn(shelfOps, op) || ['removeNodes', 'mergeShelves', 'restorePins'].includes(op)) throw new Error(`unknown shelf op ${op}`);
     return shelfWork(() => shelfOps[op](...args));
   },
-  shelfMode: ({ mode }) => shelfWork(() => setShelfMode(mode)),
-  copyShelvesToShared: () => shelfWork(copyLocalShelves),
-  retrySharedShelves: () => shelfWork(flushSharedShelves),
+  retrySharedShelves: () => shelfWork(() => flushSharedShelves(true)),
   // Queued behind the removals it refers to, so their log entries exist by the time it runs.
   markRestored: ({ pairs }) => work(async () => {
     const idMap = new Map(pairs);
@@ -89,9 +87,10 @@ const handlers = {
     if (!entry?.node) throw new Error('This log entry has nothing to restore');
     if (entry.restoredAt) return { already: true, title: entry.title };
     const parent = entry.parentId && (await nodeOf(entry.parentId));
-    const parentOk = !!parent && !parent.url;
+    const localOnly = entry.node.syncing === false;
+    const parentOk = !!parent && !parent.url && (!localOnly || parent.syncing === false);
     const idMap = new Map();
-    const created = await restoreNode(entry.node, parentOk ? entry.parentId : await getOtherRootId(), parentOk ? entry.index : undefined, idMap);
+    const created = await restoreNode(entry.node, parentOk ? entry.parentId : await getOtherRootId(localOnly), parentOk ? entry.index : undefined, idMap);
     const pins = (entry.wasPinned || []).map((pin) => ({ pin, id: idMap.get(typeof pin === 'string' ? pin : pin.id) }))
       .filter(({ id }) => id);
     if (pins.length) await shelfWork(() => shelfOps.restorePins(pins));

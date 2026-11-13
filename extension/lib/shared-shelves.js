@@ -7,7 +7,6 @@ const pinPrefix = (id) => pinsPrefix + id + ':';
 const itemOrderKey = (id) => SHARED_PREFIX + 'o:' + id;
 const shelfOrderKey = SHARED_PREFIX + 'order';
 const defaultKey = SHARED_PREFIX + 'default';
-const initialKey = SHARED_PREFIX + 'initialized';
 
 async function digest(value) {
   const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
@@ -72,7 +71,6 @@ export async function readSharedShelves(nodes, pending) {
     }
   }
 
-  let unavailable = 0;
   const orderedShelves = ordered([...shelves.values()], records[shelfOrderKey]);
   const projected = await Promise.all(orderedShelves.map(async ({ id, name }) => {
     const list = ordered(pins.get(id) || [], records[itemOrderKey(id)]);
@@ -80,35 +78,34 @@ export async function readSharedShelves(nodes, pending) {
     for (const pin of list) {
       pin.bookmark = await resolvePin(pin, byDate, hashes);
       if (pin.bookmark) items.add(pin.bookmark);
-      else unavailable++;
     }
     pins.set(id, list);
-    return { id, name, items: [...items] };
+    return { id, name, items: [...items], unavailable: list.filter((pin) => !pin.bookmark).length };
   }));
-  if (!projected.length && !records[initialKey]) projected.push({ id: 'pinned', name: 'Pinned', items: [] });
   return {
-    shelves: projected, defaultShelf: records[defaultKey], unavailable,
-    shared: { records, shelves, pins, nodes: new Map(nodes.map((node) => [node.id, node])) },
+    shelves: projected, defaultShelf: records[defaultKey],
+    unavailable: projected.reduce((count, shelf) => count + shelf.unavailable, 0),
+    shared: { records, shelves, pins },
   };
 }
 
 // Convert one shelf operation into independent records. Missing bookmarks keep their
 // memberships while Chrome's bookmark tree catches up.
-export async function sharedChanges(before, state) {
-  const { records, shelves, pins, nodes } = state.shared;
+export async function sharedChanges(before, after, shared, nodes) {
+  const { records, shelves, pins } = shared;
   const changes = {};
-  const afterIds = new Set(state.shelves.map((s) => s.id));
+  const afterIds = new Set(after.map((s) => s.id));
   // Append after current records, including when the two device clocks differ.
   let at = Math.max(Date.now(), ...[...shelves.values()].map((shelf) => shelf.at + 1),
     ...[...pins.values()].flat().map((pin) => pin.at + 1));
-  for (const old of before.shelves) {
+  for (const old of before) {
     if (afterIds.has(old.id)) continue;
     changes[shelfKey(old.id)] = null;
     if (records[itemOrderKey(old.id)]) changes[itemOrderKey(old.id)] = null;
     for (const pin of pins.get(old.id) || []) changes[pinPrefix(old.id) + pin.id] = null;
   }
-  for (const shelf of state.shelves) {
-    const old = before.shelves.find((s) => s.id === shelf.id);
+  for (const shelf of after) {
+    const old = before.find((s) => s.id === shelf.id);
     const saved = shelves.get(shelf.id);
     if (!saved || saved.name !== shelf.name) {
       changes[shelfKey(shelf.id)] = { name: shelf.name, at: saved?.at ?? at++ };
@@ -136,12 +133,13 @@ export async function sharedChanges(before, state) {
       changes[itemOrderKey(shelf.id)] = reordered;
     }
   }
-  const oldIds = before.shelves.map((s) => s.id).filter((id) => afterIds.has(id));
+  const oldIds = before.map((s) => s.id).filter((id) => afterIds.has(id));
   const prevIds = new Set(oldIds);
-  const nextIds = state.shelves.map((s) => s.id);
+  const nextIds = after.map((s) => s.id);
+  const order = records[shelfOrderKey];
   if (nextIds.filter((id) => prevIds.has(id)).some((id, i) => id !== oldIds[i])) changes[shelfOrderKey] = nextIds;
-  else if (!shelves.size && nextIds.length > 1) changes[shelfOrderKey] = nextIds;
-  if (before.defaultShelf !== state.defaultShelf && state.defaultShelf) changes[defaultKey] = state.defaultShelf;
-  if (!records[initialKey] && Object.keys(changes).length) changes[initialKey] = true;
+  else if (Array.isArray(order) && before.some((shelf) => !afterIds.has(shelf.id))) {
+    changes[shelfOrderKey] = order.filter((id) => afterIds.has(id));
+  }
   return changes;
 }

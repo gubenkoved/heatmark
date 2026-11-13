@@ -14,7 +14,7 @@ import {
 } from './list.js';
 import { entryMenu, folderMenu, listMenu, shelfMenu, showRowMenu } from './menus.js';
 import {
-  newShelf, opArchive, opDelete, opMove, opPin, opUnarchive,
+  changeShelfStorage, newShelf, opArchive, opDelete, opMove, opPin, opUnarchive,
   openEntries, pickFolder, pickShelf, removeShelf, renameShelfInline, restoreFromLog,
   reveal,
 } from './ops.js';
@@ -173,6 +173,7 @@ E.crumbs.addEventListener('click', (ev) => {
   const s = S.m.shelves.find((x) => x.id === id);
   switch (b.dataset.act) {
     case 'shelf-default': withBusy(() => setDefaultShelf(id)); break;
+    case 'shelf-storage': changeShelfStorage(id); break;
     case 'shelf-rename': renameShelfInline(id); break;
     case 'shelf-up': withBusy(() => moveShelf(id, -1)); break;
     case 'shelf-down': withBusy(() => moveShelf(id, 1)); break;

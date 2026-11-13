@@ -26,6 +26,9 @@
     localStorage.setItem(LS_NEXT, String(max + 1));
     localStorage.setItem(LS_TREE, JSON.stringify(tree));
   }
+  for (const node of tree.children) {
+    if (node.syncing == null) node.syncing = false;
+  }
   const saveTree = () => localStorage.setItem(LS_TREE, JSON.stringify(tree));
   const nextId = () => { const n = Number(localStorage.getItem(LS_NEXT) || 100000); localStorage.setItem(LS_NEXT, String(n + 1)); return String(n); };
   const map = () => { const m = new Map(); (function w(n) { m.set(n.id, n); (n.children || []).forEach(w); })(tree); return m; };
@@ -51,7 +54,7 @@
     },
     async create({ parentId = '2', title = '', url, index }) {
       const p = need(map(), parentId);
-      const n = { id: nextId(), title, dateAdded: Date.now() };
+      const n = { id: nextId(), title, dateAdded: Date.now(), syncing: p.syncing };
       if (url) n.url = url; else n.children = [];
       const i = index ?? p.children.length;
       if (i > p.children.length) throw new Error('Index out of bounds.');

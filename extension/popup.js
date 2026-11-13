@@ -1,8 +1,8 @@
 // Toolbar popup = the palette, always open.
 import { loadModel } from './lib/model.js';
 import { createPalette } from './lib/palette.js';
-import { getOtherRootId, normUrl } from './lib/bm.js';
-import { SHELF_KEYS, togglePins } from './lib/store.js';
+import { normUrl } from './lib/bm.js';
+import { pinPage, setPins, SHELF_KEYS, togglePins } from './lib/store.js';
 import { SHARED_PREFIX } from './lib/shared-shelves.js';
 import { openMenu, atPointer } from './lib/menu.js';
 import { installFaviconFallback, openLink, toast } from './lib/ui.js';
@@ -28,18 +28,18 @@ async function act(fn) {
   await refresh();
 }
 
+const canPin = () => /^(https?|file|ftp):/.test(tab?.url || '');
+// The same match pinPage makes in the worker, so the command names what will happen.
 const currentEntry = () => {
-  const k = tab?.url ? normUrl(tab.url) : null;
-  return k ? model?.idx.urls.find((x) => x.norm === k) : null;
+  const norm = canPin() ? normUrl(tab.url) : null;
+  const matches = norm ? model?.idx.urls.filter((entry) => entry.norm === norm) || [] : [];
+  return matches.find((entry) => model.isPinnedOnDefault(entry.node.id)) || matches[0];
 };
+const pinCurrent = (shelfId) => act(() => pinPage({ url: tab.url, title: tab.title }, shelfId));
 
-const pinCurrent = () => act(async () => {
-  if (!tab?.url || !/^(https?|file|ftp):/.test(tab.url)) return;
-  const e = currentEntry();
-  const id = e ? e.node.id
-    : (await chrome.bookmarks.create({ parentId: await getOtherRootId(), title: tab.title || tab.url, url: tab.url })).id;
-  await togglePins([id]);
-});
+function pickShelf(onPick) {
+  pal.open({ mode: 'shelf', title: 'Pin to shelf', allowNew: false, onPick: (shelf) => onPick(shelf.id) });
+}
 
 function openManager() {
   chrome.tabs.create({ url: chrome.runtime.getURL('manager.html') });
@@ -63,7 +63,11 @@ const pal = createPalette({
       const name = cur && model.isPinnedOnDefault(cur.node.id) ? `Unpin this page from ${shelf}`
         : cur ? `Pin this page to ${shelf}` : `Bookmark and pin this page to ${shelf}`;
       return [
-        { id: 'pin-current', showEmpty: true, hint: tab?.title ? tab.title.slice(0, 40) : '', name, run: pinCurrent },
+        ...(canPin() ? [
+          { id: 'pin-current', showEmpty: true, hint: tab.title ? tab.title.slice(0, 40) : '', name, run: () => pinCurrent() },
+          // Named without "pin", so ">pin" + Enter still runs the command above.
+          { id: 'pick-shelf', showEmpty: true, name: 'Choose a shelf for this page…', run: () => pickShelf(pinCurrent) },
+        ] : []),
         { id: 'manager', showEmpty: true, name: 'Open Heatmark', hint: 'tree, activity, log', run: openManager },
       ];
     },
@@ -84,6 +88,7 @@ const pal = createPalette({
           label: model.isPinnedOnDefault(node.id) ? `Unpin from ${model.defaultShelfName}` : `Pin to ${model.defaultShelfName}`,
           key: 'Alt P', run: () => act(() => togglePins([node.id])),
         },
+        { label: 'Pin to shelf…', run: () => pickShelf((id) => act(() => setPins([node.id], id, true))) },
         { label: 'Show in Heatmark', run: () => { chrome.tabs.create({ url: chrome.runtime.getURL(`manager.html#reveal:${node.id}`) }); window.close(); } },
       ], atPointer(ev));
     },
@@ -98,7 +103,7 @@ pal.open();
 chrome.storage.onChanged.addListener((changes, area) => {
   const keys = Object.keys(changes);
   const shelfChanged = area === 'local' && keys.some((key) => SHELF_KEYS.includes(key));
-  const sharedChanged = area === 'sync' && model.shelfMode === 'shared' && keys.some((key) => key.startsWith(SHARED_PREFIX));
+  const sharedChanged = area === 'sync' && keys.some((key) => key.startsWith(SHARED_PREFIX));
   if (shelfChanged || sharedChanged) refresh();
 });
 for (const event of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[event].addListener(refresh);

@@ -59,7 +59,7 @@ export function createPalette({ inline = false, actions }) {
   const el = h('div', { class: inline ? 'pal pal-inline' : 'pal pal-overlay', hidden: !inline }, box);
   attachScrollbar(list);
 
-  const S = { mode: 'search', items: [], sel: 0, onPick: null, open: inline };
+  const S = { mode: 'search', items: [], sel: 0, onPick: null, allowNew: true, open: inline };
 
   function bmItem(e, m, tpos, upos) {
     const pins = m.pinnedIn.get(e.node.id);
@@ -101,9 +101,9 @@ export function createPalette({ inline = false, actions }) {
         .filter((x) => x.r)
         .map(({ s, r }) => ({
           type: 'shelf', s,
-          html: `<span class="ico-shelf"></span><span class="pi-main"><span class="pi-t">${highlight(s.name, r.pos)}</span></span><span class="pi-path">${s.id === m.defaultShelf ? 'default' : ''}</span><span class="pi-n">${s.items.length}</span><span class="pi-ago"></span><span class="pi-pin"></span>`,
+          html: `<span class="ico-shelf"></span><span class="pi-main"><span class="pi-t">${highlight(s.name, r.pos)}</span></span><span class="pi-path">${s.scope === 'shared' ? 'Shared' : 'Local'}${s.id === m.defaultShelf ? ' · default here' : ''}</span><span class="pi-n">${s.items.length}</span><span class="pi-ago"></span><span class="pi-pin"></span>`,
         }));
-      if (q && !m.shelves.some((s) => s.name.toLowerCase() === q.toLowerCase())) {
+      if (S.allowNew && q && !m.shelves.some((s) => s.name.toLowerCase() === q.toLowerCase())) {
         items.push({ type: 'shelf-new', name: q, html: `<span class="ico-cmd">+</span><span class="pi-main"><span class="pi-t">New shelf “${esc(q)}”</span></span><span class="pi-path"></span><span class="pi-n"></span><span class="pi-ago"></span><span class="pi-pin"></span>` });
       }
       sections.push({ title: 'Shelves', items });
@@ -112,7 +112,8 @@ export function createPalette({ inline = false, actions }) {
       sections.push({ title: 'Commands', items: matchCommands(cq, 50) });
     } else if (!q) {
       const shown = new Set();
-      for (const s of m.shelves) {
+      for (const id of m.quickShelves) {
+        const s = m.shelves.find((shelf) => shelf.id === id);
         const es = s.items.map((id) => m.idx.entryById.get(id)).filter(Boolean);
         if (!es.length) continue;
         es.forEach((e) => shown.add(e.node.id));
@@ -226,7 +227,7 @@ export function createPalette({ inline = false, actions }) {
     } else if (k === 'Escape') {
       ev.preventDefault();
       if (input.value) { input.value = ''; S.sel = 0; render(); }
-      else if (inline) actions.onEscape?.();
+      else if (inline && S.mode === 'search') actions.onEscape?.();
       else close();
     } else if (!inline && ev.ctrlKey && (k === 'k' || k === 'p')) { ev.preventDefault(); close(); }
   });
@@ -254,9 +255,10 @@ export function createPalette({ inline = false, actions }) {
   foot.addEventListener('click', (ev) => { if (ev.target.closest('[data-fa]')) actions.footerAction?.run(); });
   if (!inline) el.addEventListener('mousedown', (ev) => { if (ev.target === el) close(); });
 
-  function open({ mode: md = 'search', title = '', placeholder, onPick, query = '' } = {}) {
+  function open({ mode: md = 'search', title = '', placeholder, onPick, allowNew = true, query = '' } = {}) {
     S.mode = md;
     S.onPick = onPick || null;
+    S.allowNew = allowNew;
     S.sel = 0;
     mode.textContent = title;
     mode.hidden = !title;

@@ -5,7 +5,7 @@
 //   - log entries already present are skipped;
 //   - visit days from the file are kept beside this profile's history (`x` in the visit record)
 //     and the larger count wins per day;
-//   - shelves with the same name gain the missing bookmarks.
+//   - local shelves with the same name gain the missing bookmarks.
 // Bookmark ids differ between profiles, so ids are kept only when they still point at the same
 // URL here, and otherwise remapped by URL (or dropped). Every field is validated, so a malformed
 // or hostile file can't break the pages that render it.
@@ -22,7 +22,7 @@ export async function buildExport(m) {
     version: 1,
     exportedAt: new Date().toISOString(),
     trackingSince: m.meta.trackingSince ? new Date(m.meta.trackingSince).toISOString() : null,
-    shelves: m.shelves,
+    shelves: m.shelves.map(({ id, name, items, scope }) => ({ id, name, items, scope })),
     defaultShelf: m.defaultShelf,
     activity: m.act,
     log: m.log.map(({ key, norm, ...e }) => e),

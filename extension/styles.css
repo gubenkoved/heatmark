@@ -253,6 +253,7 @@ body.mgr { overflow: hidden; }
 .sb-n { color: var(--fg-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .sb-def { font: 600 9px/14px var(--mono); padding: 0 3px; border-radius: 3px; color: var(--pin); box-shadow: inset 0 0 0 1px currentColor; display: none; }
 .sb-i:hover .sb-def { display: inline; }
+.sb-shared { font-size: 10.5px; color: var(--fg-3); }
 .sb-key { font: 10px var(--mono); color: var(--fg-4); display: none; }
 .sb-i:hover .sb-key { display: inline; }
 .sb-i:hover .sb-key + .sb-n { display: none; }
@@ -274,6 +275,11 @@ body.mgr { overflow: hidden; }
 .cr-hint { min-width: 0; }
 .cr-tag { font-size: 11px; color: var(--pin); padding: 2px 6px; }
 .filter-wrap { position: relative; width: 320px; flex: none; }
+/* A shelf's actions take room from the filter before they are cut off. */
+@media (min-width: 901px) {
+  .mhead:has(.cr-acts) .filter-wrap { flex: 0 100 auto; min-width: 120px; }
+  .cr-acts + .cr-hint { flex: 1 1 0; width: 0; }
+}
 .filter {
   width: 100%; height: 28px; padding: 0 28px 0 10px; border: 0; border-radius: 6px; outline: none;
   background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); font-size: 12.5px;
@@ -606,15 +612,21 @@ input.d-title:focus, .d-url:focus { background: var(--bg-2); box-shadow: inset 0
   width: min(420px, calc(100vw - 32px)); padding: 18px 18px 14px; border-radius: 10px;
   background: var(--bg); box-shadow: var(--shadow);
 }
-#settings { border: 0; color: var(--fg); }
+#settings { border: 0; color: var(--fg); max-height: calc(100vh - 32px); }
 #settings::backdrop { background: rgba(10, 12, 16, 0.28); }
 #settings .dlg-acts { flex-wrap: wrap; }
-.shelf-settings { margin: 10px 0 0; border: 0; padding: 0; min-width: 0; }
-.shelf-settings legend, .shelf-settings label { font-weight: 600; }
-.shelf-settings legend { margin-bottom: 10px; }
-.shelf-settings label { display: flex; align-items: center; gap: 4px; }
+.shelf-settings { margin-top: 10px; }
+.shelf-settings select { display: block; width: 100%; margin: 4px 0 14px; padding: 5px; color: var(--fg); background: var(--bg-2); border: 1px solid var(--line); border-radius: 5px; outline: none; }
+.shelf-settings select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.shelf-settings fieldset { margin: 0 0 12px; border: 0; padding: 0; min-width: 0; }
+.shelf-settings legend { padding: 0; }
+.shelf-settings fieldset label { display: flex; align-items: center; gap: 6px; }
+.shelf-settings legend, .shelf-settings > label { font-weight: 600; }
 .shelf-settings input { accent-color: var(--accent); }
-.shelf-settings .dlg-m { margin-left: 24px; }
+.shelf-settings .dlg-m { margin: 4px 0 8px; }
+#quick-shelves { max-height: 180px; overflow: auto; }
+.quick-shelf { display: flex; align-items: center; gap: 4px; }
+.quick-shelf label { flex: 1; overflow-wrap: anywhere; }
 .dlg-t { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
 .dlg-m { margin: 0 0 12px; color: var(--fg-2); font-size: 12.5px; line-height: 1.55; white-space: pre-line; }
 .dlg-in {

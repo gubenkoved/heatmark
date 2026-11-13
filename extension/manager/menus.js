@@ -6,7 +6,7 @@ import { openLink } from '../lib/ui.js';
 import { targets } from './detail.js';
 import { toggleFolder } from './list.js';
 import {
-  collapseAll, copyText, editUrl, expandAll, linksUnder, markdownLink,
+  changeShelfStorage, collapseAll, copyText, editUrl, expandAll, linksUnder, markdownLink,
   newFolder, newShelf, opArchive, opDelete, opPin, opUnarchive,
   openEntries, openInWindow, pickFolder, pickShelf, removeShelf, renameItem,
   renameShelfInline, reveal, selectAll,
@@ -88,10 +88,11 @@ export function shelfMenu(id) {
     urls.length && { label: `Open all ${urls.length}`, run: () => openEntries(s.items) },
     urls.length && { label: 'Open all in new window', run: () => openInWindow(urls) },
     '-',
-    s.id !== m.defaultShelf && { label: 'Make default (P pins here)', run: () => withBusy(() => setDefaultShelf(id)) },
+    s.id !== m.defaultShelf && { label: 'Make default on this computer', run: () => withBusy(() => setDefaultShelf(id)) },
     { label: 'Rename…', run: () => renameShelfInline(id) },
-    i > 0 && { label: 'Move up', run: () => withBusy(() => moveShelf(id, -1)) },
-    i < m.shelves.length - 1 && { label: 'Move down', run: () => withBusy(() => moveShelf(id, 1)) },
+    { label: s.scope === 'local' ? 'Share shelf…' : 'Make local copy…', run: () => changeShelfStorage(id) },
+    m.shelves[i - 1]?.scope === s.scope && { label: 'Move up', run: () => withBusy(() => moveShelf(id, -1)) },
+    m.shelves[i + 1]?.scope === s.scope && { label: 'Move down', run: () => withBusy(() => moveShelf(id, 1)) },
     '-',
     { label: 'New shelf…', run: () => newShelf() },
     { label: 'Delete shelf', danger: true, run: () => removeShelf(id) },
