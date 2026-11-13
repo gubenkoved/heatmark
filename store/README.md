@@ -24,7 +24,7 @@ and why it asks for each permission.
 The summary is the `description` in [`extension/manifest.json`](../extension/manifest.json)
 (132 characters at most).
 
-### Description
+### Description for 1.1.0
 
 Understand your bookmarks.
 
@@ -46,6 +46,8 @@ helps you clear out the rest, so your bookmarks work as a map to your informatio
 
 **Pin what matters**
 - Any number of shelves (pin lists): press P to pin, drag to reorder, 1–9 to jump between them
+- Shelves are local by default. Choose Shared in Settings on each computer to sync shelves,
+  pins and order through your Chrome account.
 
 **Clean up safely**
 - Filter with a small query language: `in:work host:github added:<2020 visited:>6mo is:dup`
@@ -58,12 +60,12 @@ helps you clear out the rest, so your bookmarks work as a map to your informatio
 - Deleted bookmarks and folders can be restored from the log
 
 **Private by design**
-- Runs entirely on your device: no servers, no network requests, no analytics
-- Only daily visit counts for bookmarked pages are stored, locally
+- Heatmark has no server, sends no direct network requests and has no analytics
+- Visit counts for bookmarked pages and the change log stay on your device
 - Works on your real Chrome bookmarks, so Chrome Sync, the bookmarks bar and the address bar keep working
 
 <details>
-<summary>Plain text, exactly as submitted (the store accepts no formatting)</summary>
+<summary>Plain text for the Chrome Web Store</summary>
 
 ```text
 Understand your bookmarks.
@@ -82,6 +84,7 @@ FIND ANYTHING IN A KEYSTROKE
 
 PIN WHAT MATTERS
 • Any number of shelves (pin lists): press P to pin, drag to reorder, 1–9 to jump between them
+• Shelves are local by default. Choose Shared in Settings on each computer to sync shelves, pins and order through your Chrome account.
 
 CLEAN UP SAFELY
 • Filter with a small query language: in:work host:github added:<2020 visited:>6mo is:dup
@@ -94,8 +97,8 @@ NEVER LOSE TRACK
 • Deleted bookmarks and folders can be restored from the log
 
 PRIVATE BY DESIGN
-• Runs entirely on your device: no servers, no network requests, no analytics
-• Only daily visit counts for bookmarked pages are stored, locally
+• Heatmark has no server, sends no direct network requests and has no analytics
+• Visit counts for bookmarked pages and the change log stay on your device
 • Works on your real Chrome bookmarks, so Chrome Sync, the bookmarks bar and the address bar keep working
 ```
 
@@ -119,7 +122,7 @@ screenshot carries a caption band, since the store shows them small.
 
 ## Privacy practices
 
-As declared on the store's privacy form. The full policy is [PRIVACY.md](../PRIVACY.md).
+Privacy details for this release. The full policy is [PRIVACY.md](../PRIVACY.md).
 
 **Single purpose:** help users organize and navigate their Chrome bookmarks: see which bookmarks
 they actually use, pin the important ones, clean up the rest, and keep a history of changes.
@@ -128,14 +131,16 @@ they actually use, pin the important ones, clean up the rest, and keep a history
 | --- | --- |
 | `bookmarks` | The core function: showing, searching, moving, archiving and deleting your bookmarks at your request, and logging changes so deleted items can be restored. |
 | `history` | Showing how often and when each bookmarked page was visited. Only per-day visit counts for bookmarked pages are stored, on the device; other history is never stored. |
-| `storage` | Keeping your shelves, the change log and the visit counts on the device. |
+| `storage` | Keeping shelves, the change log and visit counts. Shared uses Chrome Sync for shelf names, pin references, order and the default shelf. |
 | `unlimitedStorage` | The change log (which keeps deleted items for restore) and the long-term visit record grow over time and can exceed the default 10 MB quota for large collections. |
 | `favicon` | Showing each site's icon next to its bookmark, from Chrome's local icon cache. |
 | `activeTab` | When you open the toolbar popup, reading the current tab's address and title to offer "Pin this page". Nothing is stored unless you choose it. |
 
 **Remote code:** none. All code ships in the package; there are no external scripts, no `eval`
-and no network requests, and the extension's content security policy forbids them.
+and no direct network requests. Shared shelves use Chrome’s built-in sync service.
 
-**Data use:** the extension handles one category of user data, *web history*, and only on the
-device. It does not sell or transfer data to third parties, does not use it for anything beyond
-the single purpose above, and does not use it to determine creditworthiness or for lending.
+**Data use:** visit counts and the change log are stored on the device. If a user enables Shared,
+Chrome Sync stores shelf names, order, the default shelf and pin references in the user’s Google
+account. Pin references include hashed bookmark URLs and titles and bookmark creation times.
+Heatmark uses this data for the purpose above and does not sell it or use it for advertising,
+creditworthiness or lending.

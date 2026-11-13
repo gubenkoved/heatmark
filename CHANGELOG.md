@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0 — 2026-11-13
+
+- Added an opt-in Shared shelf collection through Chrome Sync. Local is the default on each device.
+- Added a Settings action to copy local shelves into Shared and retry pending shared edits.
+- Refreshed the Heatmark icon with a transparent background.
+
 ## 1.0.0 — first release
 
 - Manager with a folder tree, a tree table of bookmarks with 90-day visit sparklines, and a
