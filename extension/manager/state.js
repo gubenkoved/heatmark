@@ -8,6 +8,7 @@ import { syncHistory } from '../lib/store.js';
 import { debounce, lsGet, toast } from '../lib/ui.js';
 import { render } from './list.js';
 import { reveal } from './ops.js';
+import { renderSettings } from './settings.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -125,6 +126,7 @@ export async function load() {
     history.replaceState(null, '', `#folder:${m.idx.root.id}`);
   }
   render();
+  renderSettings();
   if (pendingReveal) reveal(pendingReveal, { inTree: true });
 }
 

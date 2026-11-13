@@ -1,7 +1,7 @@
 // Loads bookmarks + activity + shelves into one derived model shared by popup and manager.
 
 import { getRoot, indexTree, normUrl, host, displayUrl } from './bm.js';
-import { normalizeShelves, logFrom } from './store.js';
+import { SHELF_KEYS, shelfState, logFrom } from './store.js';
 import { lastDays, visitDays, DAY } from './activity.js';
 
 export const SPAN = 90; // days of per-day activity kept on each entry
@@ -9,7 +9,7 @@ export const SPAN = 90; // days of per-day activity kept on each entry
 export async function loadModel({ withLog = false } = {}) {
   const st = withLog
     ? await chrome.storage.local.get(null)
-    : await chrome.storage.local.get(['act', 'shelves', 'pins', 'defaultShelf', 'trackingSince', 'archiveFolderId', 'actSyncedAt']);
+    : await chrome.storage.local.get(['act', ...SHELF_KEYS, 'trackingSince', 'archiveFolderId', 'actSyncedAt']);
   const idx = indexTree(await getRoot(), st.archiveFolderId);
   const act = st.act || {};
   const now = Date.now();
@@ -67,8 +67,9 @@ export async function loadModel({ withLog = false } = {}) {
   for (const [k, arr] of groups) if (arr.length > 1) for (const e of arr) dupKey.set(e.node.id, k);
 
   // shelves (drop ids whose bookmark no longer exists, for display)
-  const shelves = normalizeShelves(st).map((s) => ({ ...s, items: s.items.filter((id) => idx.entryById.has(id)) }));
-  const defaultShelf = shelves.some((s) => s.id === st.defaultShelf) ? st.defaultShelf : shelves[0]?.id;
+  const shelfData = await shelfState(st, [...idx.byId.values()]);
+  const shelves = shelfData.shelves.map((s) => ({ ...s, items: s.items.filter((id) => idx.entryById.has(id)) }));
+  const { defaultShelf } = shelfData;
   const pinnedIn = new Map();
   for (const s of shelves) for (const id of s.items) {
     if (!pinnedIn.has(id)) pinnedIn.set(id, []);
@@ -82,7 +83,9 @@ export async function loadModel({ withLog = false } = {}) {
   }, '9999');
 
   return {
-    now, keys, idx, act, dupKey, shelves, defaultShelf, pinnedIn,
+    now, keys, idx, act, dupKey, shelves, defaultShelf, pinnedIn, shelfMode: shelfData.mode,
+    sharedPending: Object.keys(st.sharedPending || {}).length > 0,
+    sharedError: st.sharedError, unavailablePins: shelfData.unavailable || 0,
     defaultShelfName: shelves.find((s) => s.id === defaultShelf)?.name || 'Pinned',
     meta: {
       trackingSince: st.trackingSince, archiveFolderId: st.archiveFolderId, actSyncedAt: st.actSyncedAt,

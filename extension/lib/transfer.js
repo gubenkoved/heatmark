@@ -11,7 +11,7 @@
 // or hostile file can't break the pages that render it.
 
 import { getRoot, normUrl } from './bm.js';
-import { LOG_KINDS, logEntries, logFrom, normalizeShelves } from './store.js';
+import { LOG_KINDS, logEntries, logFrom, shelfOps } from './store.js';
 
 export const EXPORT_FORMAT = 'heatmark-export';
 
@@ -137,25 +137,18 @@ export async function importData(data, shelfWork) {
   const trackingSince = Math.min(all.trackingSince || Date.now(), Number.isFinite(imported) ? imported : Infinity);
   await chrome.storage.local.set({ ...logEntries(fresh), act, trackingSince });
 
-  // shelves
-  await shelfWork(async () => {
-    const shelves = normalizeShelves(await chrome.storage.local.get(['shelves', 'pins']));
-    for (const s of Array.isArray(data.shelves) ? data.shelves : []) {
-      const name = str(s?.name, 200);
-      if (!name || !Array.isArray(s.items)) continue;
-      let target = shelves.find((x) => x.name === name);
-      if (!target) {
-        target = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, items: [] };
-        shelves.push(target);
-        result.shelves++;
-      }
-      for (const fileId of s.items) {
-        const id = typeof fileId === 'string' ? resolve(fileId) : undefined;
-        if (!id) { result.unmatched++; continue; }
-        if (!target.items.includes(id)) { target.items.push(id); result.pins++; }
-      }
+  const shelves = [];
+  for (const s of Array.isArray(data.shelves) ? data.shelves : []) {
+    const name = str(s?.name, 200);
+    if (!name || !Array.isArray(s.items)) continue;
+    const items = [];
+    for (const fileId of s.items) {
+      const id = typeof fileId === 'string' ? resolve(fileId) : undefined;
+      if (id) items.push(id);
+      else result.unmatched++;
     }
-    await chrome.storage.local.set({ shelves });
-  });
+    shelves.push({ name, items });
+  }
+  Object.assign(result, await shelfWork(() => shelfOps.mergeShelves(shelves)));
   return result;
 }

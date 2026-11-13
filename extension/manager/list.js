@@ -369,6 +369,7 @@ export function renderStatus() {
     }
     if (S.selected.size) left += `<span class="st-sel">${S.selected.size} selected</span>`;
   }
+  if (S.m.shelfMode === 'shared' && S.m.sharedPending) left += '<span>Shared shelf changes pending</span>';
   E.status.innerHTML = `<div class="st-l">${left}</div><div class="st-r">`
     + k('↑↓', 'move') + k('Enter', 'open') + k('X', 'select') + k('P', 'pin') + k('M', 'move') + k('A', 'archive')
     + k('Del', 'delete') + k('Shift F10', 'actions') + k('/', 'filter') + k('Ctrl K', 'search') + k('?', 'all keys') + `</div>`;

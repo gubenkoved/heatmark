@@ -4,7 +4,7 @@ import { ensureArchiveFolder, getOtherRootId, restoreNode, slim } from '../lib/b
 import { confirmDialog, promptDialog } from '../lib/dialog.js';
 import { parseQuery } from '../lib/query.js';
 import {
-  createShelf, deleteShelf, importExport, markRestored, pin, renameShelf,
+  createShelf, deleteShelf, importExport, markRestored, setPins, renameShelf,
   resetAll, restoreFromLogEntry, togglePins,
 } from '../lib/store.js';
 import { buildExport, looksLikeExport, summarize as summarizeExport } from '../lib/transfer.js';
@@ -101,7 +101,7 @@ export async function opDelete(ids) {
       run: () => withBusy(async () => {
         const idMap = new Map();
         for (const t of trees) await restoreNode(t.node, t.parentId, t.index, idMap);
-        for (const p of pinsBefore) if (idMap.has(p.id)) await pin(idMap.get(p.id), p.shelf);
+        for (const p of pinsBefore) if (idMap.has(p.id)) await setPins([idMap.get(p.id)], p.shelf, true, m.shelfMode);
         await markRestored(idMap);
       }),
     });
@@ -116,7 +116,7 @@ export function opPin(ids, shelfId) {
     if (!r.changed.length) { toast(`Already pinned to ${r.shelf}`); return; }
     const pinned = r.kind === 'pinned';
     toast(`${pinned ? 'Pinned' : 'Unpinned'} ${plural(r.changed.length, 'bookmark')} ${pinned ? 'to' : 'from'} ${r.shelf}`,
-      { action: 'Undo', run: () => withBusy(() => togglePins(r.changed, shelfId)) });
+      { action: 'Undo', run: () => withBusy(() => setPins(r.changed, r.shelfId, !pinned, r.mode)) });
   });
 }
 
@@ -316,12 +316,12 @@ export async function removeShelf(id) {
   });
 }
 
-// Erase everything Heatmark keeps (bookmarks stay); the worker rebuilds the log and visit counts.
+// Clear the data on this device and return to Local shelves.
 export async function deleteAllStoredData() {
   const ok = await confirmDialog({
-    title: 'Delete all stored data?',
-    message: 'This erases the change log, the visit record, your shelves and your view settings. Your bookmarks are not touched; visit counts are rebuilt from Chrome history and the log starts again.',
-    ok: 'Delete everything', danger: true,
+    title: 'Delete local Heatmark data?',
+    message: 'This clears the change log, visit record, local shelves, view settings, and shared edits waiting to be saved from this device. Heatmark returns to Local mode. Your Chrome bookmarks and shelves already saved to Chrome Sync stay available.',
+    ok: 'Delete local data', danger: true,
   });
   if (!ok) return;
   await withBusy(async () => {

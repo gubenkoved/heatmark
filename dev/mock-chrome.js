@@ -88,34 +88,36 @@
     },
   };
 
-  let store = JSON.parse(localStorage.getItem(LS_STORE) || '{}');
   const onStorageChanged = event();
-  const persist = () => localStorage.setItem(LS_STORE, JSON.stringify(store));
-  const local = {
-    async get(keys) {
-      if (keys == null) return clone(store);
-      if (typeof keys === 'string') keys = [keys];
-      const out = {};
-      if (Array.isArray(keys)) { for (const k of keys) if (k in store) out[k] = clone(store[k]); }
-      else for (const [k, d] of Object.entries(keys)) out[k] = k in store ? clone(store[k]) : d;
-      return out;
-    },
-    async set(obj) {
-      const changes = {};
-      for (const [k, v] of Object.entries(obj)) { changes[k] = { oldValue: store[k], newValue: v }; store[k] = clone(v); }
-      persist(); onStorageChanged._fire(changes, 'local');
-    },
-    async remove(keys) {
-      const changes = {};
-      for (const k of [].concat(keys)) { changes[k] = { oldValue: store[k] }; delete store[k]; }
-      persist(); onStorageChanged._fire(changes, 'local');
-    },
-    async clear() {
-      const changes = Object.fromEntries(Object.keys(store).map((k) => [k, { oldValue: store[k] }]));
-      store = {};
-      persist(); onStorageChanged._fire(changes, 'local');
-    },
-  };
+  function storageArea(area, key) {
+    let store = JSON.parse(localStorage.getItem(key) || '{}');
+    const persist = () => localStorage.setItem(key, JSON.stringify(store));
+    return {
+      async get(keys) {
+        if (keys == null) return clone(store);
+        if (typeof keys === 'string') keys = [keys];
+        const out = {};
+        if (Array.isArray(keys)) { for (const k of keys) if (k in store) out[k] = clone(store[k]); }
+        else for (const [k, d] of Object.entries(keys)) out[k] = k in store ? clone(store[k]) : d;
+        return out;
+      },
+      async set(obj) {
+        const changes = {};
+        for (const [k, v] of Object.entries(obj)) { changes[k] = { oldValue: store[k], newValue: v }; store[k] = clone(v); }
+        persist(); onStorageChanged._fire(changes, area);
+      },
+      async remove(keys) {
+        const changes = {};
+        for (const k of [].concat(keys)) { changes[k] = { oldValue: store[k] }; delete store[k]; }
+        persist(); onStorageChanged._fire(changes, area);
+      },
+      async clear() {
+        const changes = Object.fromEntries(Object.keys(store).map((k) => [k, { oldValue: store[k] }]));
+        store = {};
+        persist(); onStorageChanged._fire(changes, area);
+      },
+    };
+  }
 
   const opened = (window.__opened = []);
   const tabs = {
@@ -154,7 +156,7 @@
   };
 
   window.chrome = Object.assign(window.chrome || {}, {
-    bookmarks, tabs, windows, runtime, history, storage: { local, onChanged: onStorageChanged },
+    bookmarks, tabs, windows, runtime, history, storage: { local: storageArea('local', LS_STORE), sync: storageArea('sync', LS_STORE + ':sync'), onChanged: onStorageChanged },
   });
 
   window.addEventListener('load', () => {

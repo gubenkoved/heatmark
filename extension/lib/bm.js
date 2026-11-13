@@ -123,12 +123,6 @@ export function countUrls(n) {
   return (n.children || []).reduce((s, c) => s + countUrls(c), 0);
 }
 
-export function collectIds(n, set = new Set()) {
-  set.add(n.id);
-  for (const c of n.children || []) collectIds(c, set);
-  return set;
-}
-
 // Recreate a removed subtree. idMap collects old id → new id (to re-pin).
 export async function restoreNode(node, parentId, index, idMap = new Map()) {
   const args = { parentId, title: node.title };

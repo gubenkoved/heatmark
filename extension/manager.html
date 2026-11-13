@@ -17,6 +17,7 @@
       <div class="top-r">
         <button id="sync" class="ghost" type="button" data-tip="Pull visits from Chrome history now"></button>
         <button id="detailbtn" class="ghost narrow-only" type="button" data-tip="Show details · I">Details</button>
+        <button id="settingsbtn" class="ghost" type="button">Settings</button>
         <button id="helpbtn" class="ghost" type="button" data-tip="Keyboard shortcuts · ?">?</button>
       </div>
     </header>
@@ -37,6 +38,22 @@
     <div class="detail-host"><aside id="detail" class="detail" data-scroll></aside></div>
     <footer id="status" class="status"></footer>
   </div>
+  <dialog id="settings" class="dlg" aria-labelledby="settings-title">
+    <h2 id="settings-title" class="dlg-t">Settings</h2>
+    <fieldset class="shelf-settings">
+      <legend>Shelf storage</legend>
+      <label><input type="radio" name="shelfMode" value="local"> Local (default)</label>
+      <p class="dlg-m">Use shelves saved in this Chrome profile.</p>
+      <label><input type="radio" name="shelfMode" value="shared"> Shared</label>
+      <p class="dlg-m">Chrome Sync shares your shelves, pins, sort order, and default shelf across computers. Use the same Chrome account and Heatmark installation, enable Bookmarks and Extensions in Chrome, and choose Shared on each computer. Visit counts and the change log stay on this device.</p>
+    </fieldset>
+    <p id="shelf-sync-info" class="dlg-m" role="status" hidden></p>
+    <div class="dlg-acts">
+      <button id="copy-shelves" class="btn" type="button" hidden>Copy local shelves to Shared</button>
+      <button id="retry-shelves" class="btn" type="button" hidden>Retry</button>
+      <button id="close-settings" class="btn primary" type="button">Done</button>
+    </div>
+  </dialog>
   <div id="help" class="help" hidden></div>
   <script type="module" src="manager.js"></script>
 </body>

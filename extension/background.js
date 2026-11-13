@@ -3,8 +3,10 @@
 //  - records visits to bookmarked URLs from Chrome history, long-term, and honors history deletions
 //  - owns every shelf write, so pages and the worker never overwrite each other
 
-import { getRoot, getOtherRootId, pathOf, slim, countUrls, collectIds, restoreNode } from './lib/bm.js';
-import { appendLog, logEntries, logFrom, shelfOps } from './lib/store.js';
+import { getRoot, getOtherRootId, pathOf, slim, countUrls, restoreNode } from './lib/bm.js';
+import {
+  appendLog, copyLocalShelves, flushSharedShelves, logEntries, logFrom, setShelfMode, shelfOps,
+} from './lib/store.js';
 import { syncFromHistory, syncUrls, recordVisits, bookmarkedNorms } from './lib/activity.js';
 import { importData } from './lib/transfer.js';
 
@@ -52,16 +54,23 @@ async function startup() {
   await syncFromHistory();
 }
 
-chrome.runtime.onInstalled.addListener(() => work(startup));
-chrome.runtime.onStartup.addListener(() => work(startup));
+function start() {
+  work(startup);
+  shelfWork(flushSharedShelves);
+}
+chrome.runtime.onInstalled.addListener(start);
+chrome.runtime.onStartup.addListener(start);
 
 // Messages from the extension's own pages (there is no externally_connectable or content script).
 const handlers = {
   sync: () => work(() => syncFromHistory()),
   shelf: ({ op, args }) => {
-    if (!Object.hasOwn(shelfOps, op) || op === 'removeIds') throw new Error(`unknown shelf op ${op}`);
+    if (!Object.hasOwn(shelfOps, op) || ['removeNodes', 'mergeShelves', 'restorePins'].includes(op)) throw new Error(`unknown shelf op ${op}`);
     return shelfWork(() => shelfOps[op](...args));
   },
+  shelfMode: ({ mode }) => shelfWork(() => setShelfMode(mode)),
+  copyShelvesToShared: () => shelfWork(copyLocalShelves),
+  retrySharedShelves: () => shelfWork(flushSharedShelves),
   // Queued behind the removals it refers to, so their log entries exist by the time it runs.
   markRestored: ({ pairs }) => work(async () => {
     const idMap = new Map(pairs);
@@ -83,10 +92,9 @@ const handlers = {
     const parentOk = !!parent && !parent.url;
     const idMap = new Map();
     const created = await restoreNode(entry.node, parentOk ? entry.parentId : await getOtherRootId(), parentOk ? entry.index : undefined, idMap);
-    for (const p of entry.wasPinned || []) {
-      const old = typeof p === 'string' ? p : p.id;
-      if (idMap.has(old)) await shelfWork(() => shelfOps.pin(idMap.get(old), typeof p === 'string' ? undefined : p.shelf));
-    }
+    const pins = (entry.wasPinned || []).map((pin) => ({ pin, id: idMap.get(typeof pin === 'string' ? pin : pin.id) }))
+      .filter(({ id }) => id);
+    if (pins.length) await shelfWork(() => shelfOps.restorePins(pins));
     await chrome.storage.local.set({ [key]: { ...entry, restoredAt: Date.now(), restoredId: created.id } });
     return { title: entry.title, parentOk };
   }),
@@ -97,7 +105,7 @@ const handlers = {
     return result;
   }),
   reset: () => work(async () => {
-    await chrome.storage.local.clear();
+    await shelfWork(() => chrome.storage.local.clear());
     invalidate();
     await startup();
   }),
@@ -159,18 +167,26 @@ chrome.bookmarks.onCreated.addListener((id, node) => {
   });
 });
 
-chrome.bookmarks.onRemoved.addListener((id, info) =>
+chrome.bookmarks.onRemoved.addListener((id, info) => {
+  invalidate();
+  const node = info.node || { id, title: '' };
+  const nodes = [];
+  (function walk(n) {
+    if (n.url) nodes.push(n);
+    (n.children || []).forEach(walk);
+  })(node);
+  // Chrome can remove an entire account root on sign-out. Its contents are missing
+  // on this device, while their shared pin memberships still belong to the account.
+  const removed = info.parentId === '0' ? Promise.resolve([]) : shelfWork(() => shelfOps.removeNodes(nodes));
   work(async () => {
-    invalidate();
-    const node = info.node || { id, title: '' };
-    const wasPinned = await shelfWork(() => shelfOps.removeIds([...collectIds(node)]));
+    const wasPinned = await removed.catch(() => []);
     await appendLog({
       t: Date.now(), kind: 'removed', id, title: node.title, url: node.url, folder: !node.url,
       count: countUrls(node), path: await pathOf(info.parentId),
       parentId: info.parentId, index: info.index, node: slim(node), wasPinned,
     });
-  }),
-);
+  });
+});
 
 chrome.bookmarks.onChanged.addListener((id, info) =>
   work(async () => {

@@ -4,10 +4,12 @@
 import { atPointer, openMenu } from './lib/menu.js';
 import { createPalette } from './lib/palette.js';
 import { autoScrollbars } from './lib/scrollbars.js';
+import { SHARED_PREFIX } from './lib/shared-shelves.js';
 import { togglePins } from './lib/store.js';
 import { installTooltips } from './lib/tooltip.js';
 import { installFaviconFallback, openLink } from './lib/ui.js';
 import { toggleHelp } from './manager/input.js'; // importing input.js also registers the page's event handlers
+import { openSettings } from './manager/settings.js';
 import { renderSync } from './manager/list.js';
 import { entryMenu, folderMenu } from './manager/menus.js';
 import {
@@ -40,7 +42,8 @@ export const pal = createPalette({
         { name: 'Collapse all folders', run: collapseAll },
         { name: 'Export JSON', hint: 'log, activity, shelves, bookmarks', run: exportJSON },
         { name: 'Import JSON…', hint: 'merge an export from another install', run: importJSON },
-        { name: 'Delete all stored data…', hint: 'log, visit record, shelves; bookmarks stay', run: deleteAllStoredData },
+        { name: 'Settings', hint: 'shelf storage', run: openSettings },
+        { name: 'Delete local data…', hint: 'log, visit record, local shelves', run: deleteAllStoredData },
         { name: 'Keyboard shortcuts', hint: '?', run: () => toggleHelp(true) },
       ];
     },
@@ -54,13 +57,15 @@ export const pal = createPalette({
   },
 });
 document.body.append(pal.el);
+document.getElementById('settingsbtn').addEventListener('click', openSettings);
 
 // Live updates. Hidden tabs don't reload on every change; they catch up when they become visible.
 let staleWhileHidden = false;
 const refresh = (fn) => () => { if (document.hidden) staleWhileHidden = true; else fn(); };
 for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved', 'onChildrenReordered']) chrome.bookmarks[ev]?.addListener(refresh(reload));
-chrome.storage.onChanged.addListener((changes) => {
+chrome.storage.onChanged.addListener((changes, area) => {
   const keys = Object.keys(changes);
+  if (area === 'sync' && (S.m?.shelfMode !== 'shared' || !keys.some((key) => key.startsWith(SHARED_PREFIX)))) return;
   refresh(keys.every((k) => k === 'act' || k === 'actSyncedAt') ? reloadActivity : reload)();
 });
 document.addEventListener('visibilitychange', () => {

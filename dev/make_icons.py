@@ -1,9 +1,8 @@
-"""Render the extension icons: a bookmark ribbon made of heatmap cells on a dark rounded square.
+"""Render the extension icons: a blue bookmark with heatmap cells on transparency.
 
     python3 dev/make_icons.py        → extension/icons/{16,32,48,128}.png, store/icon-128.png
 
-No dependencies: a small supersampled rasterizer writes the PNGs directly. At 16 px the cells
-would turn to mush, so the ribbon becomes a simple two-step ramp there.
+No dependencies: a small supersampled rasterizer writes the PNGs directly.
 """
 import os
 import struct
@@ -14,13 +13,10 @@ OUT = os.path.join(ROOT, "extension", "icons")
 STORE = os.path.join(ROOT, "store")
 SS = 6  # supersamples per axis
 
-BG = (18, 21, 28)
-RAMP = [(56, 96, 178), (70, 122, 228), (104, 154, 250), (182, 210, 255)]  # cool → hot
-# heat level per cell, rows top → bottom, two columns; hottest at the ribbon's tip
-CELLS = [[0, 1], [1, 0], [2, 1], [3, 2]]
-
-RIB_X0, RIB_X1, RIB_Y0, RIB_Y1 = 0.3, 0.7, 0.14, 0.87
-NOTCH = 0.17  # depth of the V cut at the bottom
+TOP, BOTTOM = (61, 121, 231), (35, 87, 194)
+CELLS = [[(116, 170, 255), (161, 203, 255)], [(150, 193, 255), (217, 236, 255)]]
+RIB_X0, RIB_X1 = 0.14, 0.86
+NOTCH = 0.24
 
 
 def in_rounded(x, y, x0, y0, x1, y1, r):
@@ -31,34 +27,22 @@ def in_rounded(x, y, x0, y0, x1, y1, r):
     return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
 
 
-def in_ribbon(x, y):
-    if not (RIB_X0 <= x <= RIB_X1 and RIB_Y0 <= y <= RIB_Y1):
-        return False
-    half = (RIB_X1 - RIB_X0) / 2
-    mid = RIB_X0 + half
-    return y <= RIB_Y1 - NOTCH * (1 - abs(x - mid) / half)
-
-
-def color_at(x, y, size):
-    if not in_rounded(x, y, 0, 0, 1, 1, 0.23):
+def color_at(x, y):
+    if not in_rounded(x, y, RIB_X0, 0, RIB_X1, 1, 0.105):
         return None
-    if not in_ribbon(x, y):
-        return BG
-    if size <= 16:  # two-step ramp
-        return RAMP[2] if y < (RIB_Y0 + RIB_Y1) / 2 else RAMP[3]
-    gap = 0.03
-    cols, rows = 2, len(CELLS)
-    cw = (RIB_X1 - RIB_X0 - gap * (cols - 1)) / cols
-    ch = (RIB_Y1 - RIB_Y0 - gap * (rows - 1)) / rows
-    c = int((x - RIB_X0) // (cw + gap))
-    r = int((y - RIB_Y0) // (ch + gap))
-    if c >= cols or r >= rows:
-        return BG
-    cx0 = RIB_X0 + c * (cw + gap)
-    cy0 = RIB_Y0 + r * (ch + gap)
-    if not in_rounded(x, y, cx0, cy0, cx0 + cw, cy0 + ch, 0.025):
-        return BG
-    return RAMP[CELLS[r][c]]
+    half = (RIB_X1 - RIB_X0) / 2
+    if y > 1 - NOTCH * (1 - abs(x - 0.5) / half):
+        return None
+
+    cell, gap = 0.19, 0.065
+    first_x = 0.5 - cell - gap / 2
+    for r, row in enumerate(CELLS):
+        y0 = 0.135 + r * (cell + gap)
+        for c, color in enumerate(row):
+            x0 = first_x + c * (cell + gap)
+            if in_rounded(x, y, x0, y0, x0 + cell, y0 + cell, 0.035):
+                return color
+    return tuple(round(top + (bottom - top) * y) for top, bottom in zip(TOP, BOTTOM))
 
 
 def render(size, pad=0):
@@ -74,7 +58,7 @@ def render(size, pad=0):
                 for sx in range(SS):
                     u = (px - pad + (sx + 0.5) / SS) / art
                     v = (py - pad + (sy + 0.5) / SS) / art
-                    col = color_at(u, v, art) if 0 <= u < 1 and 0 <= v < 1 else None
+                    col = color_at(u, v)
                     if col:
                         hits += 1
                         for i in range(3):
@@ -94,9 +78,12 @@ def render(size, pad=0):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    for s in (16, 32, 48, 128):
-        with open(os.path.join(OUT, f"{s}.png"), "wb") as f:
-            f.write(render(s))
-    with open(os.path.join(STORE, "icon-128.png"), "wb") as f:
-        f.write(render(128, pad=16))  # Web Store: 96×96 artwork centred in 128×128
+    for size in (16, 32, 48):
+        with open(os.path.join(OUT, f"{size}.png"), "wb") as f:
+            f.write(render(size, pad=size // 16))
+    # Chrome uses the packaged 128px PNG as the Web Store icon.
+    large = render(128, pad=16)
+    for path in (os.path.join(OUT, "128.png"), os.path.join(STORE, "icon-128.png")):
+        with open(path, "wb") as f:
+            f.write(large)
     print("icons written to", os.path.abspath(OUT), "and", os.path.abspath(STORE))

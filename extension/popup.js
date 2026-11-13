@@ -2,7 +2,8 @@
 import { loadModel } from './lib/model.js';
 import { createPalette } from './lib/palette.js';
 import { getOtherRootId, normUrl } from './lib/bm.js';
-import { togglePins } from './lib/store.js';
+import { SHELF_KEYS, togglePins } from './lib/store.js';
+import { SHARED_PREFIX } from './lib/shared-shelves.js';
 import { openMenu, atPointer } from './lib/menu.js';
 import { installFaviconFallback, openLink, toast } from './lib/ui.js';
 import { installTooltips } from './lib/tooltip.js';
@@ -93,3 +94,11 @@ document.body.append(pal.el);
 [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 model = await loadModel();
 pal.open();
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  const keys = Object.keys(changes);
+  const shelfChanged = area === 'local' && keys.some((key) => SHELF_KEYS.includes(key));
+  const sharedChanged = area === 'sync' && model.shelfMode === 'shared' && keys.some((key) => key.startsWith(SHARED_PREFIX));
+  if (shelfChanged || sharedChanged) refresh();
+});
+for (const event of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[event].addListener(refresh);

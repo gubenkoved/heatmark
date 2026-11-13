@@ -19,7 +19,7 @@ keep working as before.
   and folders, ranked by how often and how recently you use each link. With an empty query it
   shows your shelves, then your recent links. The toolbar popup (`Alt+K`) is the same palette.
 - **Keep what matters close.** Shelves are lists of pinned bookmarks: press `P` to pin, drag to
-  reorder, `1`–`9` to jump between them.
+  reorder, `1`–`9` to jump between them. Switch on Shared in Settings to use the same shelves on multiple computers.
 - **Slice and filter** the list with a small query language, for example
   `in:work host:github visited:>6mo -is:pinned`.
 - **Clean up safely.** Archive, move and delete in bulk, with **Undo** for each. Duplicates and
@@ -50,13 +50,14 @@ history; that takes a few seconds.
 
 ### Moving to another install
 
-Each install keeps its own data, so moving to the Chrome Web Store version or another computer
-goes through a file:
+For automatic shelf sync, install the same Heatmark build on both computers and choose
+**Settings → Shelf storage → Shared** on each. To move local data, or transfer shelves between
+different extension IDs such as an unpacked copy and the Chrome Web Store installation, use a file:
 
 1. In the old install, open **Activity & log → Export JSON**.
 2. Open the new install, then **Activity & log → Import JSON** (or `Ctrl+K` → "Import") and pick
-   the file. It is merged with what is there: nothing is deleted, entries you already have are
-   skipped, and pinned bookmarks are matched by URL, so it also works across computers.
+   the file. Heatmark skips existing entries and merges pinned bookmarks into the active shelf
+   collection by URL.
 3. Remove the old install at `chrome://extensions`.
 
 ## Your data
@@ -81,10 +82,18 @@ per day; while Chrome is running it adds new visits as they happen.
 | Your shelves | Which bookmarks you pinned, on which shelf, in what order. |
 | A few view settings | Which folders are expanded, which sections are collapsed, which log filters are on. |
 
-**Where it lives:** inside your Chrome profile, in storage only this extension can read. It is
-not synced to your other devices and never sent anywhere: Heatmark has no server and makes no
-network requests. Each install (each computer, each Chrome profile, the store version and a copy
-loaded from source) keeps its own.
+**Where it lives.** Heatmark keeps this data in your Chrome profile by default. With Shared
+selected, Chrome Sync carries the shared shelf names, pin references, order, and default shelf
+through your Google account. The pin references use hashes of the bookmark URL and title plus
+its creation time. Heatmark has no server and makes no direct network requests.
+
+**Set up Shared shelves.** Sign in to the same Chrome account on each computer and enable
+**Bookmarks** and **Extensions** in Chrome. Open **Settings** in Heatmark and choose **Shared**
+on each computer that should use that collection. To bring over existing local shelves, click
+**Copy local shelves to Shared**. Shelves with the same name are merged. Choose **Local** at any
+time to return to that profile’s own shelves. Shared pins appear when their matching Chrome
+bookmarks are available. If Chrome rejects a sync write, Heatmark keeps the edit on the device
+and offers **Retry** in Settings.
 
 **How it stays up to date:**
 
@@ -98,12 +107,13 @@ loaded from source) keeps its own.
 
 **You're in control:**
 
-- **Export JSON** saves everything to a file on your computer, as a backup or to move installs.
-  The file contains your bookmarks, the change log and the visit counts, so keep it private.
-- **Import JSON** merges an export back in.
-- **Delete all stored data** (`Ctrl+K` → "Delete") erases everything Heatmark keeps. Your
-  bookmarks are untouched; visit counts are rebuilt from history and the log starts again.
-- **Removing the extension** deletes everything it stored.
+- **Export JSON** saves your bookmarks, the active shelves and their available pins, the change
+  log, and visit counts to a file. Keep the file private.
+- **Import JSON** merges shelves into the active collection and merges visit counts and the log locally.
+- **Delete local data** (`Ctrl+K` → "Delete local data") erases Heatmark’s data and unsent shared
+  edits from this profile, then switches to Local. Your Chrome bookmarks and shelves already
+  saved to Chrome Sync remain available. Visit counts and the log are rebuilt.
+- **Removing the extension** clears Heatmark’s local storage in that profile.
 
 The formal statement is in [PRIVACY.md](PRIVACY.md).
 
@@ -115,8 +125,9 @@ The formal statement is in [PRIVACY.md](PRIVACY.md).
 - **Delete** removes the real Chrome bookmark on every synced device. **Undo** restores it in
   place, and the log keeps the full item (folders with their contents) for a later restore.
   Restored items get new ids and a new date added. Deleting more than 25 bookmarks asks first.
-- **Shelves** are kept by Heatmark and don't change your bookmark folders. Deleting a bookmark
-  takes it off its shelves; the log remembers which ones, and restoring it pins it again.
+- **Shelves** are kept by Heatmark. A pin leaves the original Chrome bookmark in its folder.
+  Deleting a bookmark takes it off its shelves. Restoring from the log can pin it again in the
+  active shelf collection.
 - **Visits** count history entries for the bookmarked URL, ignoring reloads. URLs are compared
   without the `https://`, `www.` or a trailing slash. A visit to a *different* URL on the same
   site, such as a redirect target, doesn't count.
