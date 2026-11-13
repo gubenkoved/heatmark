@@ -24,7 +24,7 @@ and why it asks for each permission.
 The summary is the `description` in [`extension/manifest.json`](../extension/manifest.json)
 (132 characters at most).
 
-### Description for 1.1.0
+### Description for 1.2.0
 
 Understand your bookmarks.
 
@@ -46,8 +46,8 @@ helps you clear out the rest, so your bookmarks work as a map to your informatio
 
 **Pin what matters**
 - Any number of shelves (pin lists): press P to pin, drag to reorder, 1–9 to jump between them
-- Shelves are local by default. Choose Shared in Settings on each computer to sync shelves,
-  pins and order through your Chrome account.
+- Shelves are local by default. Share a shelf to sync it and its pins through your Chrome account.
+- On each computer, choose the shelves shown in the popup and the shelf that P pins to
 
 **Clean up safely**
 - Filter with a small query language: `in:work host:github added:<2020 visited:>6mo is:dup`
@@ -84,7 +84,8 @@ FIND ANYTHING IN A KEYSTROKE
 
 PIN WHAT MATTERS
 • Any number of shelves (pin lists): press P to pin, drag to reorder, 1–9 to jump between them
-• Shelves are local by default. Choose Shared in Settings on each computer to sync shelves, pins and order through your Chrome account.
+• Shelves are local by default. Share a shelf to sync it and its pins through your Chrome account.
+• On each computer, choose the shelves shown in the popup and the shelf that P pins to
 
 CLEAN UP SAFELY
 • Filter with a small query language: in:work host:github added:<2020 visited:>6mo is:dup
@@ -131,7 +132,7 @@ they actually use, pin the important ones, clean up the rest, and keep a history
 | --- | --- |
 | `bookmarks` | The core function: showing, searching, moving, archiving and deleting your bookmarks at your request, and logging changes so deleted items can be restored. |
 | `history` | Showing how often and when each bookmarked page was visited. Only per-day visit counts for bookmarked pages are stored, on the device; other history is never stored. |
-| `storage` | Keeping shelves, the change log and visit counts. Shared uses Chrome Sync for shelf names, pin references, order and the default shelf. |
+| `storage` | Keeping shelves, the change log and visit counts. A shelf the user shares uses Chrome Sync for its name, order and pin references. |
 | `unlimitedStorage` | The change log (which keeps deleted items for restore) and the long-term visit record grow over time and can exceed the default 10 MB quota for large collections. |
 | `favicon` | Showing each site's icon next to its bookmark, from Chrome's local icon cache. |
 | `activeTab` | When you open the toolbar popup, reading the current tab's address and title to offer "Pin this page". Nothing is stored unless you choose it. |
@@ -139,8 +140,8 @@ they actually use, pin the important ones, clean up the rest, and keep a history
 **Remote code:** none. All code ships in the package; there are no external scripts, no `eval`
 and no direct network requests. Shared shelves use Chrome’s built-in sync service.
 
-**Data use:** visit counts and the change log are stored on the device. If a user enables Shared,
-Chrome Sync stores shelf names, order, the default shelf and pin references in the user’s Google
-account. Pin references include hashed bookmark URLs and titles and bookmark creation times.
+**Data use:** visit counts and the change log are stored on the device. When a user shares a
+shelf, Chrome Sync stores its name, order and pin references in the user’s Google account. Pin
+references include hashed bookmark URLs and titles and bookmark creation times.
 Heatmark uses this data for the purpose above and does not sell it or use it for advertising,
 creditworthiness or lending.

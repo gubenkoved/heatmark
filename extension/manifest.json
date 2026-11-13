@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Heatmark",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Understand your bookmarks: see which ones you use, keep the important ones a keystroke away, and clear out the rest.",
   "minimum_chrome_version": "114",
   "permissions": [

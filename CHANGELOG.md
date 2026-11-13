@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 2026-11-13
+
+- Sharing is now a choice per shelf: new shelves are Local, and **Share…** on a shelf syncs it
+  through Chrome Sync. **Make local copy…** copies a Shared shelf to this computer. This replaces
+  the Local or Shared switch in Settings; shelves from both 1.1.0 collections are kept.
+- Each Chrome profile chooses its own default pin shelf and the shelves shown in Quick Access
+  (the popup and `Ctrl+K`), so a work computer and a home computer can differ on one account.
+- Added **Choose a shelf for this page…** and **Pin to shelf…** to the popup.
+
 ## 1.1.0 — 2026-11-13
 
 - Added an opt-in Shared shelf collection through Chrome Sync. Local is the default on each device.
